@@ -41,12 +41,26 @@
 *.su
 *.idb
 *.pdb
+*.gdb
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+
+# Vim swap files
+.*.swp
+
+# Contiki patch guard
+.contiki_patched
+
+# Downloaded files
+*.zip
+
+# Third party software
+contiki-nrf52/nrf5x-softdevice
+
+# ota-server configuration file
+contiki-nrf52/ota-server/mac.txt
+
+# tags etc.
+cscope.out
+tags
+
+

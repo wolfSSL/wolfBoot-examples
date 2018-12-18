@@ -1,0 +1,28 @@
+diff --git contiki/cpu/nrf52832/ld/nrf52-pca10040-sd.ld contiki-nrf52-patched/cpu/nrf52832/ld/nrf52-pca10040-sd.ld
+index f30aad455..0df4bc7b5 100644
+--- contiki/cpu/nrf52832/ld/nrf52-pca10040-sd.ld
++++ contiki-nrf52-patched/cpu/nrf52832/ld/nrf52-pca10040-sd.ld
+@@ -5,8 +5,8 @@ GROUP(-lgcc -lc -lnosys)
+ 
+ MEMORY
+ {
+-  FLASH (rx) : ORIGIN = 0x1f000, LENGTH = 0x61000
++  FLASH (rx) : ORIGIN = 0x2f100, LENGTH = 0x3FE00
+   RAM (rwx) :  ORIGIN = 0x20002800, LENGTH = 0xD800
+ }
+ 
+-INCLUDE "nrf5x_common.ld"
+\ No newline at end of file
++INCLUDE "nrf5x_common.ld"
+diff --git contiki/platform/nrf52dk/contiki-main.c contiki-nrf52-patched/platform/nrf52dk/contiki-main.c
+index d97e6c609..a10bbe3d7 100644
+--- contiki/platform/nrf52dk/contiki-main.c
++++ contiki-nrf52dk-patched/platform/nrf52dk/contiki-main.c
+@@ -110,6 +110,7 @@ static void
+ board_init(void)
+ {
+ #ifdef SOFTDEVICE_PRESENT
++    sd_softdevice_vector_table_base_set(0x2f100);
+   /* Initialize the SoftDevice handler module */
+   SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
+ #endif

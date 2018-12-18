@@ -1,0 +1,4 @@
+loadbin dtls-ota/dtls-ota-force-update.bin 0x58000
+r
+g
+q
