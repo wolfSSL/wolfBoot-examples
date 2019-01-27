@@ -4,3 +4,6 @@
 [submodule "contiki-nrf52/contiki"]
 	path = contiki-nrf52/contiki
 	url = https://github.com/danielinux/contiki
+[submodule "riotOS-samr21/RIOT"]
+	path = riotOS-samr21/RIOT
+	url = https://github.com/danielinux/RIOT
