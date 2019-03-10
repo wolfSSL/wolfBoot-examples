@@ -7,3 +7,9 @@
 [submodule "riotOS-samr21/RIOT"]
 	path = riotOS-samr21/RIOT
 	url = https://github.com/danielinux/RIOT
+[submodule "freeRTOS-k64f/picotcp"]
+	path = freeRTOS-k64f/picotcp
+	url = https://gitlab.com/insane-adding-machines/picotcp.git
+[submodule "freeRTOS-Freescale-K64F-https-TLS1.3/picotcp"]
+	path = freeRTOS-Freescale-K64F-https-TLS1.3/picotcp
+	url = https://gitlab.com/insane-adding-machines/picotcp.git
