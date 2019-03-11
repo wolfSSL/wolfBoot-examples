@@ -49,11 +49,17 @@ Connect to the target through the ethernet port using a web browser (default sta
 
 A file submission form is shown. Select the version two of the compiled image `image.bin.v2.signed`, created at compile time, and click `Update`.
 
+![Update submission form](png/kinetis-freertos-before.png)
+
 When the transfer is complete, a confirmation page is shown. A flag is activated at the end of the flash area to notify wolfBoot of a pending upgrade (using `wolfBoot_update_trigger()` from the application)
+
+![Update submission form](png/kinetis-freertos-update.png)
 
 After reboot, wolfBoot will copy the image from the secondary partition to the primary partition, to allow the new firmware to run, but only if the new firmware can be authenticated using the public Ed25519 key stored in the bootloader image. In all other cases, the upgrade is canceled and the old firmware can be started again.
 
 After 30 seconds, the page is automatically refreshed, and the target should now show a new webpage, with the updated version number.
+
+![Update submission form](png/kinetis-freertos-after.png)
 
 ## Copyright notice
 This example is Copyright (c) 2019 wolfSSL Inc., and distributed under the term of GNU GPL2.
