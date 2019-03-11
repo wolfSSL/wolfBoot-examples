@@ -8,6 +8,7 @@ This repository contains example applications using [wolfBoot](https://github.co
 
    * DTLS/IPv6/6LoWPAN/BLE secure firmware update mechanism, with [contiki OS on Nordic nRF52 platform](contiki-nrf52)
    * USB CDC-ACM signed firmware update mechanism, with [RIOT-OS on Atmel SAM-R21 platform](riotOS-samr21)
+   * HTTPS over TLS1.3 signed firmware update mechanism, with [freeRTOS on Freescale K64F](freeRTOS-Freescale-K64F-https-TLS1.3)
 
 ## License
 
