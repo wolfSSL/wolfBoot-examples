@@ -53,7 +53,7 @@ A file submission form is shown. Select the version two of the compiled image `i
 
 When the transfer is complete, a confirmation page is shown. A flag is activated at the end of the flash area to notify wolfBoot of a pending upgrade (using `wolfBoot_update_trigger()` from the application)
 
-![Update submission form](png/kinetis-freertos-update.png)
+![Update submission form](png/kinetis-freertos-transfer.png)
 
 After reboot, wolfBoot will copy the image from the secondary partition to the primary partition, to allow the new firmware to run, but only if the new firmware can be authenticated using the public Ed25519 key stored in the bootloader image. In all other cases, the upgrade is canceled and the old firmware can be started again.
 
