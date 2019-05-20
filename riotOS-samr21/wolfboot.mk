@@ -3,11 +3,11 @@ ifdef WOLFBOOT_OFFSET
 WOLFBOOT:=$(abspath $(RIOTBASE)/../../wolfBoot/)
 CFLAGS += -I$(WOLFBOOT)/include
 
-SIGNTOOL ?= $(WOLFBOOT)/tools/ed25519/ed25519_sign
-KEYGENTOOL ?= $(WOLFBOOT)/tools/ed25519/ed25519_keygen
+SIGNTOOL ?= python3 $(WOLFBOOT)/tools/keytools/sign.py
+KEYGENTOOL ?= python3 $(WOLFBOOT)/tools/keytools/keygen.py
 
 BINFILE ?= $(BINDIR)/$(APPLICATION).bin
-SIGN_BINFILE = $(BINDIR)/$(APPLICATION).bin.v5.signed
+SIGN_BINFILE = $(BINDIR)/$(APPLICATION)_v5_signed.bin
 WOLFBOOT_KEYFILE ?= $(WOLFBOOT)/ed25519.der
 WOLFBOOT_BIN ?= $(WOLFBOOT)/wolfboot.bin
 

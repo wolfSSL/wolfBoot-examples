@@ -3,10 +3,11 @@ CROSS_COMPILE:=arm-none-eabi-
 OBJCOPY:=$(CROSS_COMPILE)objcopy
 JLINK_OPTS = -Device NRF52 -if swd -speed 1000
 DTLS_OTA=$(PWD)/dtls-ota
-BOOT_IMG:=$(DTLS_OTA)/dtls-ota.bin
+BOOT_IMG:=$(DTLS_OTA)/dtls-ota
 BOOT_ELF:=$(DTLS_OTA)/dtls-ota.nrf52dk
 WOLFBOOT:=$(PWD)/../wolfBoot
 WOLFBOOT_BIN:=$(WOLFBOOT)/wolfboot.bin
+DEBUG?=0
 
 all: $(DTLS_OTA)/dtls-ota-signed.bin
 
@@ -21,7 +22,7 @@ $(BOOT_ELF): nrf5_iot_sdk_3288530.zip $(WOLFBOOT_BIN) .contiki_patched
 $(WOLFBOOT_BIN):
 	cp target.h $(WOLFBOOT)/include
 	cp nrf52.ld $(WOLFBOOT)/hal
-	make -C $(WOLFBOOT) BOOT0_OFFSET=0x10000 VTOR=0 TARGET=nrf52 DEBUG=0 wolfboot.bin 
+	make -C $(WOLFBOOT) BOOT0_OFFSET=0x10000 VTOR=0 TARGET=nrf52 DEBUG=$(DEBUG) wolfboot.bin 
 
 nrf5_iot_sdk_3288530.zip:
 	wget https://developer.nordicsemi.com/nRF5_IoT_SDK/nRF5_IoT_SDK_v0.9.x/nrf5_iot_sdk_3288530.zip
@@ -34,10 +35,10 @@ clean:
 	rm -f $(DTLS_OTA)/*.bin 
 	rm -f tags
 	
-$(BOOT_IMG).v1.signed: $(BOOT_ELF)
-	$(WOLFBOOT)/tools/ed25519/ed25519_sign $(BOOT_IMG) $(WOLFBOOT)/ed25519.der 1
+$(BOOT_IMG)_v1_signed.bin: $(BOOT_ELF)
+	python3 $(WOLFBOOT)/tools/keytools/sign.py $(BOOT_IMG).bin $(WOLFBOOT)/ed25519.der 1
 
-$(DTLS_OTA)/dtls-ota-signed.bin: $(BOOT_IMG).v1.signed
+$(DTLS_OTA)/dtls-ota-signed.bin: $(BOOT_IMG)_v1_signed.bin
 	mv $^ $@
 
 $(DTLS_OTA)/dtls-ota-force-update.bin: $(DTLS_OTA)/dtls-ota-signed.bin

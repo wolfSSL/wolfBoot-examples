@@ -14,16 +14,15 @@ WOLFSSL_ROOT:=../wolfBoot/lib/wolfssl
 WOLFSSL_BUILD:=./build/lib
 DEBUG?=0
 
-
 CFLAGS=-mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
 	   -DFREERTOS \
-	   -DNVM_FLASH_WRITEONCE 
+	   -DNVM_FLASH_WRITEONCE
 CFLAGS+=-mthumb -Wall -Wextra -Wno-main -Wstack-usage=1024 -ffreestanding -Wno-unused \
 		-Isrc \
 	-Ilib/bootutil/include -Iinclude/ -Ilib/wolfssl -I$(FREERTOS_PORT) -nostartfiles \
 	-IfreeRTOS -IfreeRTOS/include -I build/include -I$(WOLFBOOT)/include -I$(WOLFBOOT) \
 	-DWOLFSSL_USER_SETTINGS -I$(WOLFSSL_ROOT)  -DPICO_PORT_CUSTOM \
-	-mthumb -mlittle-endian -mthumb-interwork -ffreestanding -fno-exceptions 
+	-mthumb -mlittle-endian -mthumb-interwork -ffreestanding -fno-exceptions
 
 ifneq ($(DEBUG),0)
   CFLAGS+=-O0 -ggdb3
@@ -103,7 +102,7 @@ WOLFSSL_OBJS += 	\
     $(WOLFSSL_BUILD)/tls13.o
 	
 OBJS_SPMATH:= $(WOLFSSL_BUILD)/wolfcrypt/sp_c32.o  \
- 		 		$(WOLFSSL_BUILD)/wolfcrypt/sp_int.o  
+ 		 		$(WOLFSSL_BUILD)/wolfcrypt/sp_int.o
 
 OBJS+=$(WOLFSSL_OBJS) $(OBJS_SPMATH)
 LIBS+=build/lib/libpicotcp.a
@@ -112,16 +111,29 @@ vpath %.c $(dir $(WOLFSSL_ROOT)/src)
 vpath %.c $(dir $(WOLFSSL_ROOT)/wolfcrypt/src)
 
 wolfboot:LSCRIPT:=k64f_wolfboot.ld
-wolfboot: image.bin
-	make -C ../wolfBoot TARGET=kinetis clean
-	cp -f src/target.h ../wolfBoot/include/
-	make -C ../wolfBoot TARGET=kinetis DEBUG=$(DEBUG) NVM_FLASH_WRITEONCE=1 wolfboot-align.bin
-	cp ../wolfBoot/wolfboot-align.bin .
-	../wolfBoot/tools/ed25519/ed25519_sign image.bin ../wolfBoot/ed25519.der 1
-	cat wolfboot-align.bin image.bin.v1.signed >factory.bin
+wolfboot: image.bin wolfboot-align.bin
+	python3 ../wolfBoot/tools/keytools/sign.py image.bin ../wolfBoot/ed25519.der 1
+	cat wolfboot-align.bin image_v1_signed.bin >factory.bin
 	sleep 1
 	touch image.bin
-	../wolfBoot/tools/ed25519/ed25519_sign image.bin ../wolfBoot/ed25519.der 2
+	python3 ../wolfBoot/tools/keytools/sign.py image.bin ../wolfBoot/ed25519.der 2
+
+wolfboot-align.bin:CFLAGS=-mthumb -Wall -Wextra -Wno-main -Wstack-usage=1024 -ffreestanding -Wno-unused \
+		-Isrc \
+	-Ilib/bootutil/include -Iinclude/ -Ilib/wolfssl -I$(FREERTOS_PORT) -nostartfiles \
+	-IfreeRTOS -IfreeRTOS/include -I build/include -I$(WOLFBOOT)/include -I$(WOLFBOOT) \
+	-DWOLFSSL_USER_SETTINGS -I$(WOLFSSL_ROOT)  -DPICO_PORT_CUSTOM \
+	-mthumb -mlittle-endian -mthumb-interwork -ffreestanding -fno-exceptions
+wolfboot-align.bin:CFLAGS+=-I$(KINETIS_DRIVERS)/drivers -I$(KINETIS_DRIVERS) -DCPU_MK64FN1M0VLL12 -I$(KINETIS_CMSIS)/Include -I$(PHY) -DDEBUG_CONSOLE_ASSERT_DISABLE=1 -mcpu=cortex-m3 -DNVM_FLASH_WRITEONCE=1
+wolfboot-align.bin:LDFLAGS=$(CFLAGS) -Wl,-gc-sections -ffreestanding -nostartfiles -lc -lnosys -specs=nano.specs -Wl,-Map=image.map
+wolfboot-align.bin:
+	make -C ../wolfBoot TARGET=kinetis NVM_FLASH_WRITEONCE=1 clean
+	cp -f src/target.h ../wolfBoot/include/
+	rm -f ../wolfBoot/hal/kinetis.o
+	rm -f ../wolfBoot/src/*.o
+	rm -f $(KINETIS_DRIVERS)/drivers/*.o
+	make -C ../wolfBoot TARGET=kinetis DEBUG=$(DEBUG) NVM_FLASH_WRITEONCE=1 wolfboot-align.bin
+	cp ../wolfBoot/wolfboot-align.bin .
 
 
 
@@ -166,7 +178,7 @@ image.elf: wolfboot_target $(WOLFSSL_BUILD)/wolfcrypt $(LIBS) $(OBJS) $(LSCRIPT)
 	$(LD) $(LDFLAGS) -Wl,--start-group $(OBJS) $(LIBS) -Wl,--end-group -o $@ -T $(LSCRIPT)
 
 clean:
-	rm -f *.bin *.elf $(OBJS) wolfboot.map *.bin  *.hex src/*.o freeRTOS/*.o $(FREERTOS_PORT)/*.o *.signed *.map tags
+	rm -f *.bin *.elf $(OBJS) wolfboot.map *.bin  *.hex src/*.o freeRTOS/*.o $(FREERTOS_PORT)/*.o *.map tags
 	make -C picotcp clean
 
 FORCE:
