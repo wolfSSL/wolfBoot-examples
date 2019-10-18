@@ -128,20 +128,21 @@ wolfboot-align.bin:CFLAGS+=-I$(KINETIS_DRIVERS)/drivers -I$(KINETIS_DRIVERS) -DC
 wolfboot-align.bin:LDFLAGS=$(CFLAGS) -Wl,-gc-sections -ffreestanding -nostartfiles -lc -lnosys -specs=nano.specs -Wl,-Map=image.map
 wolfboot-align.bin:
 	make -C ../wolfBoot TARGET=kinetis NVM_FLASH_WRITEONCE=1 clean
-	cp -f src/target.h ../wolfBoot/include/
 	rm -f ../wolfBoot/hal/kinetis.o
 	rm -f ../wolfBoot/src/*.o
 	rm -f $(KINETIS_DRIVERS)/drivers/*.o
-	make -C ../wolfBoot TARGET=kinetis DEBUG=$(DEBUG) NVM_FLASH_WRITEONCE=1 wolfboot-align.bin
+	make -C ../wolfBoot TARGET=kinetis DEBUG=$(DEBUG) NVM_FLASH_WRITEONCE=1 \
+		WOLFBOOT_SECTOR_SIZE=0x1000 \
+		WOLFBOOT_PARTITION_SIZE=0x7A000 \
+		WOLFBOOT_PARTITION_BOOT_ADDRESS=0xA000 \
+		WOLFBOOT_PARTITION_UPDATE_ADDRESS=0x84000 \
+		WOLFBOOT_PARTITION_SWAP_ADDRESS=0xff000 \
+		wolfboot-align.bin
 	cp ../wolfBoot/wolfboot-align.bin .
-
-
 
 standalone:LSCRIPT:=k64f_standalone.ld
 standalone: image.bin
 	
-
-
 $(LIBS): picotcp
 	make -C picotcp EXTRA_CFLAGS="-DPICO_PORT_CUSTOM $(CFLAGS) -I../src -I../freeRTOS/include -I../freeRTOS -I../$(FREERTOS_PORT)" \
 		ARCH=cortexm4-hardfloat CROSS_COMPILE=arm-none-eabi- RTOS=1 \

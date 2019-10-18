@@ -20,8 +20,7 @@ wolfboot-create-key: $(WOLFBOOT_KEYFILE)
 $(WOLFBOOT_KEYFILE):
 	make -C $(WOLFBOOT) clean
 	make -C $(WOLFBOOT) distclean
-	cp $(RIOTBASE)/../target.h $(WOLFBOOT)/include
-	make -C $(WOLFBOOT) TARGET=samr21 TARGET_ARCH= DEBUG=0 BOOT0_OFFSET=$(WOLFBOOT_OFFSET) ed25519.der 
+	make -C $(WOLFBOOT) TARGET=samr21 DEBUG=0 ed25519.der  \
 
 wolfboot: wolfboot-create-key link
 	@$(COLOR_ECHO)
@@ -46,8 +45,13 @@ $(WOLFBOOT_BIN):
 	@$(COLOR_ECHO) $(SRC)
 	@$(COLOR_ECHO)
 	make -C $(WOLFBOOT) clean
-	cp $(RIOTBASE)/../target.h $(WOLFBOOT)/include
-	make -C $(WOLFBOOT) TARGET=samr21 TARGET_ARCH= DEBUG=0 BOOT0_OFFSET=$(WOLFBOOT_OFFSET) wolfboot.bin
+	make -C $(WOLFBOOT) TARGET=samr21 TARGET_ARCH= DEBUG=0 BOOT0_OFFSET=$(WOLFBOOT_OFFSET) \
+		WOLFBOOT_SECTOR_SIZE=0x100 \
+		WOLFBOOT_PARTITION_SIZE=0x1B000 \
+		WOLFBOOT_PARTITION_BOOT_ADDRESS=0x08000 \
+		WOLFBOOT_PARTITION_UPDATE_ADDRESS=0x23000 \
+		WOLFBOOT_PARTITION_SWAP_ADDRESS=0x3E000 \
+		wolfboot.bin
 
 .PHONY: wolfboot-flash-bootloader wolfboot-flash
 

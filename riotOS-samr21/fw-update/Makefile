@@ -9,7 +9,7 @@ IMAGE_VERSION=5
 BOARD ?= samr21-xpro
 
 # This has to be the absolute path to the RIOT base directory:
-RIOTBASE ?= $(CURDIR)/../RIOT/
+RIOTBASE ?= $(abspath $(CURDIR)/../RIOT/)
 
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the
@@ -33,6 +33,7 @@ USEMODULE += periph_flashpage
 
 WOLFBOOT_DIR=$(abspath $(RIOTBASE)/../../wolfBoot)
 USEMODULE_INCLUDES+=-I$(WOLFBOOT_DIR)/include
+CFLAGS+=-Wno-unused-parameter -Wno-unused-variable -Wno-missing-include-dirs
 
 include $(RIOTBASE)/Makefile.include
 include ../wolfboot.mk
