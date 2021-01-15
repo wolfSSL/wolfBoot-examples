@@ -13,3 +13,9 @@
 [submodule "freeRTOS-Freescale-K64F-https-TLS1.3/picotcp"]
 	path = freeRTOS-Freescale-K64F-https-TLS1.3/picotcp
 	url = https://gitlab.com/insane-adding-machines/picotcp.git
+[submodule "contiki-ng-nrf52/contiki-ng"]
+	path = contiki-ng-nrf52/contiki-ng
+	url = https://github.com/contiki-ng/contiki-ng.git
+[submodule "riotOS-nrf52840dk-ble/RIOT"]
+	path = riotOS-nrf52840dk-ble/RIOT
+	url = https://github.com/RIOT-OS/RIOT

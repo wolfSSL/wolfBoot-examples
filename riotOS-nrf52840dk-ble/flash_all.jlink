@@ -1,0 +1,5 @@
+loadbin ../wolfBoot/wolfboot.bin 0x0
+loadbin nrf52-gatt-service/bin/nrf52840dk/nrf52-gatt-service_v1_signed.bin 0x20000
+r
+g
+q
