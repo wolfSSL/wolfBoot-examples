@@ -30,8 +30,12 @@
 #include "hal.h"
 #include "wolfboot/wolfboot.h"
 #include "spi_flash.h"
+#include "spi_drv.h"
+#include "spi_tpm.h"
 
-#ifdef PLATFORM_stm32f4
+#include "wolftpm/tpm2.h"
+#include "wolftpm/tpm2_wrap.h"
+static WOLFTPM2_DEV wolftpm_dev;
 
 #define UART1 (0x40011000)
 
@@ -59,7 +63,6 @@
 
 #define AHB1_CLOCK_ER (*(volatile uint32_t *)(0x40023830))
 #define GPIOB_AHB1_CLOCK_ER (1 << 1)
-#define GPIOB_BASE 0x40020400
 
 #define GPIOB_MODE  (*(volatile uint32_t *)(GPIOB_BASE + 0x00))
 #define GPIOB_AFL   (*(volatile uint32_t *)(GPIOB_BASE + 0x20))
@@ -76,8 +79,10 @@ static const char START='*';
 static const char UPDATE='U';
 static const char ACK='#';
 static uint8_t msg[MSGSIZE];
-
-
+static const char startString[]="App started";
+static const char TPMfailString[]="tpm_init failed";
+static const char TPMpcrString[]="Measured Boot PCR is = ";
+static const char HEX [16] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 
 void uart_write(const char c)
 {
@@ -86,6 +91,12 @@ void uart_write(const char c)
         reg = UART1_SR;
     } while ((reg & UART_SR_TX_EMPTY) == 0);
     UART1_DR = c;
+}
+
+void uart_write_hex(const char c)
+{
+    uart_write(HEX[(c >> 4) & 0x0F]);
+    uart_write(HEX[c & 0x0F]);
 }
 
 static void uart_pins_setup(void)
@@ -183,7 +194,77 @@ static int check(uint8_t *pkt, int size)
     return -1;
 }
 
+static int app_tpm2_IoCb(TPM2_CTX* ctx, const byte* txBuf, byte* rxBuf,
+    word16 xferSz, void* userCtx)
+{
+    (void)userCtx;
+    (void)ctx;
+    word16 i;
+
+    spi_cs_on(SPI_CS_TPM);
+
+    memset(rxBuf, 0, xferSz);
+    for (i = 0; i < xferSz; i++)
+    {
+        spi_write(txBuf[i]);
+        rxBuf[i] = spi_read();
+    }
+    spi_cs_off(SPI_CS_TPM);
+
+    /*
+    printf("\r\nSPI TX: ");
+    printbin(txBuf, xferSz);
+    printf("SPI RX: ");
+    printbin(rxBuf, xferSz);
+    printf("\r\n");
+    */
+
+    return 0;
+}
+
+static int app_tpm2_init(void)
+{
+    int rc;
+    WOLFTPM2_CAPS caps;
+
+    spi_init(0,0);
+
+    /* Init the TPM2 device */
+    rc = wolfTPM2_Init(&wolftpm_dev, app_tpm2_IoCb, NULL);
+    if (rc != 0)  {
+        return rc;
+    }
+
+    /* Get device capabilities + options */
+    rc = wolfTPM2_GetCapabilities(&wolftpm_dev, &caps);
+    if (rc != 0)  {
+        return rc;
+    }
+
+    return 0;
+}
+
+/* Reads out the TPM measurement created by wolfBoot */
+static int read_measured_boot(uint8_t* digest)
+{
+    int rc;
+    PCR_Read_In pcrReadCmd;
+    PCR_Read_Out pcrReadResp;
+
+    XMEMSET(&pcrReadCmd, 0, sizeof(pcrReadCmd));
+    TPM2_SetupPCRSel(&pcrReadCmd.pcrSelectionIn, TPM_ALG_SHA256, WOLFBOOT_MEASURED_PCR_A);
+    rc = TPM2_PCR_Read(&pcrReadCmd, &pcrReadResp);
+    if (rc == TPM_RC_SUCCESS) {
+        XMEMCPY(digest, pcrReadResp.pcrValues.digests[0].buffer,
+                pcrReadResp.pcrValues.digests[0].size);
+        rc = 0;
+    }
+
+    return rc;
+}
+
 volatile uint32_t time_elapsed = 0;
+volatile uint32_t testme = 1;
 void main(void) {
     uint32_t tlen = 0;
     volatile uint32_t recv_seq;
@@ -192,6 +273,7 @@ void main(void) {
     uint32_t next_seq = 0;
     uint32_t version = 0;
     uint8_t *v_array = (uint8_t *)&version;
+    uint8_t boot_measurement[WOLFBOOT_SHA_DIGEST_SIZE];
     int i;
     memset(page, 0xFF, PAGESIZE);
     boot_led_on();
@@ -223,10 +305,35 @@ void main(void) {
 #ifdef EXT_ENCRYPTED
     wolfBoot_set_encrypt_key("0123456789abcdef0123456789abcdef", 32);
 #endif
+
+    for(i=0; i < sizeof(startString); i++) {
+        uart_write(startString[i++]);
+    }
+
     uart_write(START);
     for (i = 3; i >= 0; i--) {
         uart_write(v_array[i]);
     }
+
+    if(app_tpm2_init() != 0) {
+        for(i=0; i < sizeof(TPMfailString); i++) {
+            uart_write(TPMfailString[i]);
+        }
+    }
+
+    if(read_measured_boot(boot_measurement) == 0) {
+        for(i = 0; i < sizeof(TPMpcrString); i++) {
+            uart_write(TPMpcrString[i]);
+        }
+        /* Print the digest of the measurement */
+        for(i=0; i < sizeof(boot_measurement); i++) {
+            uart_write_hex(boot_measurement[i]);
+        }
+        /* For better view on the UART terminal */
+        uart_write('\n');
+        uart_write('\r');
+    }
+
     while (1) {
         r_total = 0;
         do {
@@ -294,5 +401,4 @@ void main(void) {
     while(1)
         ;
 }
-#endif /** PLATFORM_stm32f4 **/
 

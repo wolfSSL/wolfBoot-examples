@@ -14,14 +14,18 @@ LC_ALL=
 APPSRC:=./src
 WOLFBOOT:=../wolfBoot
 WOLFSSL_ROOT:=../wolfBoot/lib/wolfssl
-WOLFSSL_BUILD:=./build/lib
+WOLFTPM_ROOT:=../wolfBoot/lib/wolfTPM
 ECCKEY:=$(WOLFBOOT)/ecc256.der
 DEBUG?=1
 
 include $(WOLFBOOT)/tools/config.mk
 
-CFLAGS:=-g -ggdb -Wall -Wstack-usage=1024 -ffreestanding -Wno-unused -DPLATFORM_$(TARGET) -I$(WOLFBOOT)/include -I$(WOLFSSL_ROOT)/wolfssl -nostartfiles
+CFLAGS:=-g -ggdb -Wall -Wstack-usage=1024 -ffreestanding -Wno-unused -DPLATFORM_$(TARGET) \
+        -I$(WOLFBOOT)/include -I$(WOLFBOOT) -I$(WOLFSSL_ROOT) -I$(WOLFTPM_ROOT) \
+        -DWOLFBOOT_MEASURED_PCR_A -nostartfiles
 CFLAGS+=-DWOLFBOOT_HASH_SHA256
+CFLAGS+=-DWOLFSSL_USER_SETTINGS
+CFLAGS+=-DWOLFTPM_USER_SETTINGS
 
 APP_OBJS:= \
 	$(APPSRC)/app_$(TARGET).o \
@@ -30,7 +34,22 @@ APP_OBJS:= \
 	$(APPSRC)/timer.o \
 	$(WOLFBOOT)/hal/$(TARGET).o \
 	$(WOLFBOOT)/src/libwolfboot.o \
+	$(WOLFBOOT)/hal/spi/spi_drv_stm32.o \
 	$(APPSRC)/startup_arm.o
+
+# Add objects for wolfCrypt support required by wolfTPM
+APP_OBJS+= \
+	$(WOLFSSL_ROOT)/wolfcrypt/src/hmac.o \
+	$(WOLFSSL_ROOT)/wolfcrypt/src/aes.o \
+	$(WOLFSSL_ROOT)/wolfcrypt/src/wc_port.o
+
+# Add objects for wolfTPM support
+APP_OBJS+= \
+	$(WOLFTPM_ROOT)/src/tpm2.o \
+	$(WOLFTPM_ROOT)/src/tpm2_packet.o \
+	$(WOLFTPM_ROOT)/src/tpm2_tis.o \
+	$(WOLFTPM_ROOT)/src/tpm2_wrap.o \
+	$(WOLFTPM_ROOT)/src/tpm2_param_enc.o
 
 # Inherit cross-compiler and similar settings from wolfBoot
 include ../wolfBoot/arch.mk
@@ -43,13 +62,15 @@ endif
 
 vpath %.c $(dir $(WOLFSSL_ROOT)/src)
 vpath %.c $(dir $(WOLFSSL_ROOT)/wolfcrypt/src)
+vpath %.c $(dir $(WOLFBOOT))/lib/wolfTPM/wolftpm)
 
 ENTRY_POINT=`cat .entry-point-address`
 LSCRIPT:=$(APPSRC)/target-app.ld
 LSCRIPT_TEMPLATE:=$(APPSRC)/$(ARCH).ld
 LDFLAGS:=$(CFLAGS) -T $(LSCRIPT) -Wl,-gc-sections -Wl,-Map=image.map
 
-wolfboot-example: image.bin wolfboot_align.bin
+
+wolfboot-example: wolfboot_align.bin image.bin
 	python3 $(WOLFBOOT)/tools/keytools/sign.py --ecc256 image.bin $(ECCKEY) 1
 	cat wolfboot-align.bin image_v1_signed.bin >factory.bin
 
@@ -60,7 +81,7 @@ wolfboot_align.bin: wolfboot_target
 	cp $(WOLFBOOT)/wolfboot-align.bin .
 	cp $(WOLFBOOT)/wolfboot.elf .
 
-image.bin: image.elf wolfboot_target
+image.bin: wolfboot_target image.elf
 	$(OBJCOPY) -O binary image.elf $@
 	$(SIZE) image.elf
 
