@@ -1,4 +1,4 @@
-# STM32F4-Discovery-Measured-Boot
+# STM32F407-Discovery-Measured-Boot
 
 Measured Boot example running on STM32F407-Discovery board.
 
@@ -78,25 +78,109 @@ Enter the project folder for this example:
 
 `wolfboot-examples/wolfBoot$ cd ../test-app-STM32F4-measured-boot`
 
-Makefile in the project folder takes care of compiling wolfBoot, compiling the test application and signing the firmware:
+Makefile in the project folder takes care of compiling wolfTPM, wolfBoot, compiling the test application and signing the firmware:
 
 `wolfboot-examples/wolfBoot$ make`
 
-After a successful operation the following files will be available in the project folder:
+The following files will be available in the project folder after successful build:
 
 - factory.bin - Test-app and wolfboot combined, ready for flashing
+- wolfboot.elf - WolfBoot with Debug information, useful for gdb
 - image.bin - Test-app without signature
+- image.elf - Test-app with Debug information, useful for gdb
 - image_v1_signed.bin - Test-app with signature
 - image.map - Listing of the Test-app
 
-## Copyright notice
-This example is Copyright (c) 2020 wolfSSL Inc., and distributed under the term of GNU GPL2.
+## Usage
 
-Some STM/STMicroelectronics specific drivers used in this example are Copyright of ST Microelectronics. Distributed freely as specified by BSD-3-Clause License.
+After successful compilation, the `flash` target can be used to flash the `factory.bin` image to the STM32F4-Discovery board using ST-Link2
+
+`make flash`
+
+Typical output:
+
+```
+test-app-STM32F4-measured-boot % make flash
+st-flash write factory.bin 0x08000000
+st-flash 1.6.1
+2021-01-27T19:24:01 INFO common.c: F4xx: 192 KiB SRAM, 1024 KiB flash in at least 16 KiB pages.
+file factory.bin md5 checksum: 7cc2a98a3e5366ecc54bbb79a646286, stlink checksum: 0x01c745fb
+2021-01-27T19:24:01 INFO common.c: Attempting to write 143576 (0x230d8) bytes to stm32 address: 134217728 (0x8000000)
+EraseFlash - Sector:0x0 Size:0x4000 2021-01-27T19:24:01 INFO common.c: Flash page at addr: 0x08000000 erased
+EraseFlash - Sector:0x1 Size:0x4000 2021-01-27T19:24:02 INFO common.c: Flash page at addr: 0x08004000 erased
+EraseFlash - Sector:0x2 Size:0x4000 2021-01-27T19:24:02 INFO common.c: Flash page at addr: 0x08008000 erased
+EraseFlash - Sector:0x3 Size:0x4000 2021-01-27T19:24:02 INFO common.c: Flash page at addr: 0x0800c000 erased
+EraseFlash - Sector:0x4 Size:0x10000 2021-01-27T19:24:03 INFO common.c: Flash page at addr: 0x08010000 erased
+EraseFlash - Sector:0x5 Size:0x20000 2021-01-27T19:24:05 INFO common.c: Flash page at addr: 0x08020000 erased
+2021-01-27T19:24:05 INFO common.c: Finished erasing 6 pages of 131072 (0x20000) bytes
+2021-01-27T19:24:05 INFO common.c: Starting Flash write for F2/F4/L4
+2021-01-27T19:24:05 INFO flash_loader.c: Successfully loaded flash loader in sram
+enabling 32-bit flash writes
+size: 32768
+size: 32768
+size: 32768
+size: 32768
+size: 12504
+2021-01-27T19:24:07 INFO common.c: Starting verification of write complete
+2021-01-27T19:24:08 INFO common.c: Flash written and verified! jolly good!
+```
+
+Launch arm-none-eabi-gdb and perform the following steps for debugging
+
+1. Load symbol file for test application. Wolfboot.elf is already loaded thanks to .gdbinit supplied with the project.
+
+`add-symbol-file image.elf`
+
+2. Set breakpoints at "main", two breakpoints should be created, one for main() in wolfBoot and one for main() in the test app.
+
+`b main`
+
+3. Set breakpoints at "measure_boot", "read_measured_boot"
+
+`b measure_boot`
+`b read_measured_boot`
+
+4. Start execution by invoking "continue" to gdb
+
+`c`
+
+5. Expected output on the connected UART terminal (see UART pinout in `Prerequisites`)
+
+```
+App started
+Measured Boot PCR is = 0x01020304050607080910
+```
+
+This value is the one created by wolfBoot during start of the device. This value is the result of PCR Extend operation and depends on the firmware image loaded. Using the same firmware image should produce the same PCR measurement. By using different firmware images a change in the PCR value can be obsereved, simulating tampering.
+
+For more information about measured boot contact us at facts@wolfssl.com
+
+## Notes
+
+The supplied openocd.config is prepared for STM32F407-Discovery revision D that uses newer ST-LINK2 variant.
+
+If you are using STM32F407-Discovery revision B, then modify the very first line in the config file:
+
+`source [find interface/stlink-v2-1.cfg]`
+
+with
+
+`source [find interface/stlink-v2.cfg]`
+
+Start new openocd session using
+
+`openocd -f openocd.config`
+
+Start new gdb session as described in `Usage`.
+
+Please contact us at support@wolfssl.com for any questions about using this example.
+
+## Copyright notice
+
+This example is Copyright (c) 2020 wolfSSL Inc., and distributed under the term of GNU GPL2.
 
 wolfBoot, wolfSSL (formerly known as CyaSSL) and wolfCrypt are Copyright (c) 2006-2018 wolfSSL Inc., and licensed for use under GPLv2.
 
-wolfTPM, is Copyright (c) 2018-2020 wolfSSL Inc., and licensed for use under GPLv2.
+wolfTPM is Copyright (c) 2018-2020 wolfSSL Inc., and licensed for use under GPLv2.
 
 See the documentation within each component subdirectory for more information about using and distributing this software.
-
