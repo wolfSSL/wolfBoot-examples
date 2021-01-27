@@ -54,6 +54,7 @@ Hardware connections must be made between the TPM2.0 module and the STM32F4 boar
 | 3V       | +3V           | Pin 1         |
 | GND      | Ground        | Pin 6         |
 
+
 UART1 on the STM32F4 is used by default. The default baud rate is 115200. 
 
 The UART Pinout can be found below:
@@ -130,26 +131,28 @@ size: 12504
 2021-01-27T19:24:08 INFO common.c: Flash written and verified! jolly good!
 ```
 
-Launch arm-none-eabi-gdb and perform the following steps for debugging
+To debug start first start GDB server (see GDB Server section below).
 
-1. Load symbol file for test application. Wolfboot.elf is already loaded thanks to .gdbinit supplied with the project.
+1. Launch arm-none-eabi-gdb and perform the following steps for debugging
+
+2. Load symbol file for test application. Wolfboot.elf is already loaded thanks to .gdbinit supplied with the project.
 
 `add-symbol-file image.elf`
 
-2. Set breakpoints at "main", two breakpoints should be created, one for main() in wolfBoot and one for main() in the test app.
+3. Set breakpoints at "main", two breakpoints should be created, one for main() in wolfBoot and one for main() in the test app.
 
 `b main`
 
-3. Set breakpoints at "measure_boot", "read_measured_boot"
+4. Set breakpoints at "measure_boot", "read_measured_boot"
 
 `b measure_boot`
 `b read_measured_boot`
 
-4. Start execution by invoking "continue" to gdb
+5. Start execution by invoking "continue" to gdb
 
 `c`
 
-5. Expected output on the connected UART terminal (see UART pinout in `Prerequisites`)
+6. Expected output on the connected UART terminal (see UART pinout in `Prerequisites`)
 
 ```
 App started
@@ -160,7 +163,7 @@ This value is the one created by wolfBoot during start of the device. This value
 
 For more information about measured boot contact us at facts@wolfssl.com
 
-## Notes
+## GDB Server
 
 The supplied openocd.config is prepared for STM32F407-Discovery revision D that uses newer ST-LINK2 variant.
 
@@ -177,6 +180,8 @@ Start new openocd session using
 `openocd -f openocd.config`
 
 Start new gdb session as described in `Usage`.
+
+Note: You can also use the ST-Util for GDB server using: `st-util -p 3333`.
 
 Please contact us at support@wolfssl.com for any questions about using this example.
 
