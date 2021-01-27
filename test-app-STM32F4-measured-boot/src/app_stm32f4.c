@@ -1,8 +1,8 @@
-/* stm32f4.c
+/* app_stm32f4.c
  *
- * Test bare-metal blinking led application
+ * Test bare-metal application for reporting measured boot value over UART
  *
- * Copyright (C) 2020 wolfSSL Inc.
+ * Copyright (C) 2021 wolfSSL Inc.
  *
  * This file is part of wolfBoot.
  *
@@ -83,6 +83,8 @@ static const char startString[]="App started";
 static const char TPMfailString[]="tpm_init failed";
 static const char TPMpcrString[]="Measured Boot PCR is = ";
 static const char HEX [16] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+
+volatile uint32_t time_elapsed = 0; /* Used for PWM on LED */
 
 void uart_write(const char c)
 {
@@ -203,7 +205,7 @@ static int app_tpm2_IoCb(TPM2_CTX* ctx, const byte* txBuf, byte* rxBuf,
 
     spi_cs_on(SPI_CS_TPM);
 
-    memset(rxBuf, 0, xferSz);
+    XMEMSET(rxBuf, 0, xferSz);
     for (i = 0; i < xferSz; i++)
     {
         spi_write(txBuf[i]);
@@ -263,9 +265,8 @@ static int read_measured_boot(uint8_t* digest)
     return rc;
 }
 
-volatile uint32_t time_elapsed = 0;
-volatile uint32_t testme = 1;
-void main(void) {
+void main(void)
+{
     uint32_t tlen = 0;
     volatile uint32_t recv_seq;
     uint32_t r_total = 0;
