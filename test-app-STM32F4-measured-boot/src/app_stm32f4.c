@@ -38,12 +38,16 @@
 static WOLFTPM2_DEV wolftpm_dev;
 
 #define UART1 (0x40011000)
+#define UART2 (0x40014400)
 
-#define UART1_SR       (*(volatile uint32_t *)(UART1))
-#define UART1_DR       (*(volatile uint32_t *)(UART1 + 0x04))
-#define UART1_BRR      (*(volatile uint32_t *)(UART1 + 0x08))
-#define UART1_CR1      (*(volatile uint32_t *)(UART1 + 0x0c))
-#define UART1_CR2      (*(volatile uint32_t *)(UART1 + 0x10))
+#ifndef APP_UART
+#define APP_UART UART1
+#endif
+#define UART_SR       (*(volatile uint32_t *)(APP_UART))
+#define UART_DR       (*(volatile uint32_t *)(APP_UART + 0x04))
+#define UART_BRR      (*(volatile uint32_t *)(APP_UART + 0x08))
+#define UART_CR1      (*(volatile uint32_t *)(APP_UART + 0x0c))
+#define UART_CR2      (*(volatile uint32_t *)(APP_UART + 0x10))
 
 #define UART_CR1_UART_ENABLE    (1 << 13)
 #define UART_CR1_SYMBOL_LEN     (1 << 12)
@@ -58,18 +62,32 @@ static WOLFTPM2_DEV wolftpm_dev;
 
 #define CLOCK_SPEED (168000000)
 
-#define APB2_CLOCK_ER           (*(volatile uint32_t *)(0x40023844))
+#define APB2_CLOCK_ER       (*(volatile uint32_t *)(0x40023844))
 #define UART1_APB2_CLOCK_ER (1 << 4)
+#define UART2_APB2_CLOCK_ER (1 << 17)
 
-#define AHB1_CLOCK_ER (*(volatile uint32_t *)(0x40023830))
+#define AHB1_CLOCK_ER       (*(volatile uint32_t *)(0x40023830))
+#define GPIOA_AHB1_CLOCK_ER (1 << 0)
 #define GPIOB_AHB1_CLOCK_ER (1 << 1)
 
+#ifndef GPIOA_BASE
+#define GPIOA_BASE  0x48000000
+#endif
+#define GPIOA_MODE  (*(volatile uint32_t *)(GPIOA_BASE + 0x00))
+#define GPIOA_AFL   (*(volatile uint32_t *)(GPIOA_BASE + 0x20))
+#define GPIOA_AFH   (*(volatile uint32_t *)(GPIOA_BASE + 0x24))
+#ifndef GPIOB_BASE
+#define GPIOB_BASE  0x48000400
+#endif
 #define GPIOB_MODE  (*(volatile uint32_t *)(GPIOB_BASE + 0x00))
 #define GPIOB_AFL   (*(volatile uint32_t *)(GPIOB_BASE + 0x20))
 #define GPIOB_AFH   (*(volatile uint32_t *)(GPIOB_BASE + 0x24))
-#define UART1_PIN_AF 7
-#define UART1_RX_PIN 7
-#define UART1_TX_PIN 6
+
+#define UART_PIN_AF 7
+#define UART1_RX_PIN 7 /* PB7 */
+#define UART1_TX_PIN 6 /* PB6 */
+#define UART2_RX_PIN 3 /* PA3 */
+#define UART2_TX_PIN 2 /* PA2 */
 
 #define MSGSIZE 16
 #define PAGESIZE (256)
@@ -90,9 +108,9 @@ void uart_write(const char c)
 {
     uint32_t reg;
     do {
-        reg = UART1_SR;
+        reg = UART_SR;
     } while ((reg & UART_SR_TX_EMPTY) == 0);
-    UART1_DR = c;
+    UART_DR = c;
 }
 
 void uart_write_hex(const char c)
@@ -104,6 +122,7 @@ void uart_write_hex(const char c)
 static void uart_pins_setup(void)
 {
     uint32_t reg;
+#if APP_UART == UART1
     AHB1_CLOCK_ER |= GPIOB_AHB1_CLOCK_ER;
     /* Set mode = AF */
     reg = GPIOB_MODE & ~ (0x03 << (UART1_RX_PIN * 2));
@@ -113,9 +132,25 @@ static void uart_pins_setup(void)
 
     /* Alternate function: use low pins (6 and 7) */
     reg = GPIOB_AFL & ~(0xf << ((UART1_TX_PIN) * 4));
-    GPIOB_AFL = reg | (UART1_PIN_AF << ((UART1_TX_PIN) * 4));
+    GPIOB_AFL = reg | (UART_PIN_AF << ((UART1_TX_PIN) * 4));
     reg = GPIOB_AFL & ~(0xf << ((UART1_RX_PIN) * 4));
-    GPIOB_AFL = reg | (UART1_PIN_AF << ((UART1_RX_PIN) * 4));
+    GPIOB_AFL = reg | (UART_PIN_AF << ((UART1_RX_PIN) * 4));
+#elif APP_UART == UART2
+    AHB1_CLOCK_ER |= GPIOA_AHB1_CLOCK_ER;
+    /* Set mode = AF */
+    reg = GPIOA_MODE & ~ (0x03 << (UART2_RX_PIN * 2));
+    GPIOA_MODE = reg | (2 << (UART2_RX_PIN * 2));
+    reg = GPIOA_MODE & ~ (0x03 << (UART2_TX_PIN * 2));
+    GPIOA_MODE = reg | (2 << (UART2_TX_PIN * 2));
+
+    /* Alternate function: use low pins (6 and 7) */
+    reg = GPIOA_AFL & ~(0xf << ((UART2_TX_PIN) * 4));
+    GPIOA_AFL = reg | (UART_PIN_AF << ((UART2_TX_PIN) * 4));
+    reg = GPIOA_AFL & ~(0xf << ((UART2_RX_PIN) * 4));
+    GPIOA_AFL = reg | (UART_PIN_AF << ((UART2_RX_PIN) * 4));
+#else
+    #error Please configure the UART pins
+#endif
 }
 
 int uart_setup(uint32_t bitrate, uint8_t data, char parity, uint8_t stop)
@@ -124,40 +159,44 @@ int uart_setup(uint32_t bitrate, uint8_t data, char parity, uint8_t stop)
     /* Enable pins and configure for AF7 */
     uart_pins_setup();
     /* Turn on the device */
+#if APP_UART == UART1
     APB2_CLOCK_ER |= UART1_APB2_CLOCK_ER;
+#elif APP_UART == UART2
+    APB2_CLOCK_ER |= UART2_APB2_CLOCK_ER;
+#endif
 
     /* Configure for TX + RX */
-    UART1_CR1 |= (UART_CR1_TX_ENABLE | UART_CR1_RX_ENABLE);
+    UART_CR1 |= (UART_CR1_TX_ENABLE | UART_CR1_RX_ENABLE);
 
     /* Configure clock */
-    UART1_BRR =  CLOCK_SPEED / bitrate;
+    UART_BRR =  CLOCK_SPEED / bitrate;
 
     /* Configure data bits */
     if (data == 8)
-        UART1_CR1 &= ~UART_CR1_SYMBOL_LEN;
+        UART_CR1 &= ~UART_CR1_SYMBOL_LEN;
     else
-        UART1_CR1 |= UART_CR1_SYMBOL_LEN;
+        UART_CR1 |= UART_CR1_SYMBOL_LEN;
 
     /* Configure parity */
     switch (parity) {
         case 'O':
-            UART1_CR1 |= UART_CR1_PARITY_ODD;
+            UART_CR1 |= UART_CR1_PARITY_ODD;
             /* fall through to enable parity */
         case 'E':
-            UART1_CR1 |= UART_CR1_PARITY_ENABLED;
+            UART_CR1 |= UART_CR1_PARITY_ENABLED;
             break;
         default:
-            UART1_CR1 &= ~(UART_CR1_PARITY_ENABLED | UART_CR1_PARITY_ODD);
+            UART_CR1 &= ~(UART_CR1_PARITY_ENABLED | UART_CR1_PARITY_ODD);
     }
     /* Set stop bits */
-    reg = UART1_CR2 & ~UART_CR2_STOPBITS;
+    reg = UART_CR2 & ~UART_CR2_STOPBITS;
     if (stop > 1)
-        UART1_CR2 = reg & (2 << 12);
+        UART_CR2 = reg & (2 << 12);
     else
-        UART1_CR2 = reg;
+        UART_CR2 = reg;
 
     /* Turn on uart */
-    UART1_CR1 |= UART_CR1_UART_ENABLE;
+    UART_CR1 |= UART_CR1_UART_ENABLE;
 
     return 0;
 }
@@ -167,9 +206,9 @@ char uart_read(void)
     char c;
     volatile uint32_t reg;
     do {
-        reg = UART1_SR;
+        reg = UART_SR;
     } while ((reg & UART_SR_RX_NOTEMPTY) == 0);
-    c = (char)(UART1_DR & 0xff);
+    c = (char)(UART_DR & 0xff);
     return c;
 }
 

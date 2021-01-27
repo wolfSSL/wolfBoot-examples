@@ -12,16 +12,39 @@ LC_TIME="C"
 LC_ALL=
 
 APPSRC:=./src
-WOLFBOOT:=../wolfBoot
+WOLFBOOT_ROOT:=../wolfBoot
 WOLFSSL_ROOT:=../wolfBoot/lib/wolfssl
 WOLFTPM_ROOT:=../wolfBoot/lib/wolfTPM
-ECCKEY:=$(WOLFBOOT)/ecc256.der
+ECCKEY:=$(WOLFBOOT_ROOT)/ecc256.der
 DEBUG?=1
 
-include $(WOLFBOOT)/tools/config.mk
+include $(WOLFBOOT_ROOT)/tools/config.mk
+export WOLFBOOT_ROOT
+
+
+ifneq ("$(wildcard $(WOLFBOOT_ROOT)/tools/keytools/keygen)","")
+	KEYGEN_TOOL:=$(WOLFBOOT_ROOT)/tools/keytools/keygen
+else
+	ifneq ("$(wildcard $(WOLFBOOT_ROOT)/tools/keytools/keygen.exe)","")
+		KEYGEN_TOOL:=$(WOLFBOOT_ROOT)/tools/keytools/keygen.exe
+	else
+		KEYGEN_TOOL:=python3 $(WOLFBOOT_ROOT)/tools/keytools/keygen.py
+	endif
+endif
+
+ifneq ("$(wildcard $(WOLFBOOT_ROOT)/tools/keytools/sign)","")
+	SIGN_TOOL:=$(WOLFBOOT_ROOT)/tools/keytools/sign
+else
+	ifneq ("$(wildcard $(WOLFBOOT_ROOT)/tools/keytools/sign.exe)","")
+		SIGN_TOOL:=$(WOLFBOOT_ROOT)/tools/keytools/sign.exe
+	else
+		SIGN_TOOL:=python3 $(WOLFBOOT_ROOT)/tools/keytools/sign.py
+	endif
+endif
+
 
 CFLAGS:=-g -ggdb -Wall -Wstack-usage=1024 -ffreestanding -Wno-unused -DPLATFORM_$(TARGET) \
-        -I$(WOLFBOOT)/include -I$(WOLFBOOT) -I$(WOLFSSL_ROOT) -I$(WOLFTPM_ROOT) \
+        -I$(WOLFBOOT_ROOT)/include -I$(WOLFBOOT_ROOT) -I$(WOLFSSL_ROOT) -I$(WOLFTPM_ROOT) \
         -DWOLFBOOT_MEASURED_PCR_A -nostartfiles
 CFLAGS+=-DWOLFBOOT_HASH_SHA256
 CFLAGS+=-DWOLFSSL_USER_SETTINGS
@@ -32,9 +55,9 @@ APP_OBJS:= \
 	$(APPSRC)/led.o \
 	$(APPSRC)/system.o \
 	$(APPSRC)/timer.o \
-	$(WOLFBOOT)/hal/$(TARGET).o \
-	$(WOLFBOOT)/src/libwolfboot.o \
-	$(WOLFBOOT)/hal/spi/spi_drv_stm32.o \
+	$(WOLFBOOT_ROOT)/hal/$(TARGET).o \
+	$(WOLFBOOT_ROOT)/src/libwolfboot.o \
+	$(WOLFBOOT_ROOT)/hal/spi/spi_drv_stm32.o \
 	$(APPSRC)/startup_arm.o
 
 # Add objects for wolfCrypt support required by wolfTPM
@@ -62,7 +85,7 @@ endif
 
 vpath %.c $(dir $(WOLFSSL_ROOT)/src)
 vpath %.c $(dir $(WOLFSSL_ROOT)/wolfcrypt/src)
-vpath %.c $(dir $(WOLFBOOT))/lib/wolfTPM/wolftpm)
+vpath %.c $(dir $(WOLFBOOT_ROOT))/lib/wolfTPM/wolftpm)
 
 ENTRY_POINT=`cat .entry-point-address`
 LSCRIPT:=$(APPSRC)/target-app.ld
@@ -71,15 +94,15 @@ LDFLAGS:=$(CFLAGS) -T $(LSCRIPT) -Wl,-gc-sections -Wl,-Map=image.map
 
 
 wolfboot-example: wolfboot_align.bin image.bin
-	python3 $(WOLFBOOT)/tools/keytools/sign.py --ecc256 image.bin $(ECCKEY) 1
+	$(SIGN_TOOL) --ecc256 image.bin $(ECCKEY) 1
 	cat wolfboot-align.bin image_v1_signed.bin >factory.bin
 
-wolfboot-align.bin:LSCRIPT:=$(WOLFBOOT)/target.ld
+wolfboot-align.bin:LSCRIPT:=$(WOLFBOOT_ROOT)/target.ld
 wolfboot_align.bin:CFLAGS+=-DWOLFBOOT_HASH_SHA256
 wolfboot_align.bin: wolfboot_target
-	make -C $(WOLFBOOT) align
-	cp $(WOLFBOOT)/wolfboot-align.bin .
-	cp $(WOLFBOOT)/wolfboot.elf .
+	make -C $(WOLFBOOT_ROOT) align
+	cp $(WOLFBOOT_ROOT)/wolfboot-align.bin .
+	cp $(WOLFBOOT_ROOT)/wolfboot.elf .
 
 image.bin: wolfboot_target image.elf
 	$(OBJCOPY) -O binary image.elf $@
@@ -90,8 +113,8 @@ image.elf: wolfboot_target $(APP_OBJS) $(LSCRIPT)
 	$(Q)$(LD) $(LDFLAGS) $(APP_OBJS) -o $@
 
 wolfboot_target: FORCE
-	cp -f measured.wolfboot.config $(WOLFBOOT)/.config
-	make -C $(WOLFBOOT) include/target.h
+	cp -f measured.wolfboot.config $(WOLFBOOT_ROOT)/.config
+	make -C $(WOLFBOOT_ROOT) include/target.h
 
 %.o:%.c
 	@echo "\t[CC-$(ARCH)] $@"
@@ -102,7 +125,7 @@ wolfboot_target: FORCE
 	$(Q)$(CC) $(CFLAGS) -c -o $@ $^
 
 clean:
-	make -C $(WOLFBOOT) clean
+	make -C $(WOLFBOOT_ROOT) clean
 	@rm -f *.bin *.elf $(OBJS) wolfboot.map *.bin  *.hex src/*.o tags *.map
 
 $(LSCRIPT): $(LSCRIPT_TEMPLATE) FORCE

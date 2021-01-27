@@ -54,7 +54,9 @@ Hardware connections must be made between the TPM2.0 module and the STM32F4 boar
 | 3V       | +3V           | Pin 1         |
 | GND      | Ground        | Pin 6         |
 
-UART1 on the STM32F4 is used. The UART Pinout can be found below:
+UART1 on the STM32F4 is used by default. The default baud rate is 115200. 
+
+The UART Pinout can be found below:
 
 | STM32F4  | Pin function |
 |----------|:------------:|
@@ -62,7 +64,10 @@ UART1 on the STM32F4 is used. The UART Pinout can be found below:
 | PB7      | UART RX      |
 | GND      | Ground       |
 
-Make sure the Ground connection between your USB-UART converter is connected to the STM32F4 board, otherwise UART levels will float and communication will be corrupted.
+Note: The ST-Link USB UDC is UART 2 on PA3 (TX) / PA2 (RX). This can be changed in app_stm32f4.c using APP_UART.
+
+Note: Make sure the Ground connection between your USB-UART converter is connected to the STM32F4 board, otherwise UART levels will float and communication will be corrupted.
+
 
 ## Compiling
 
