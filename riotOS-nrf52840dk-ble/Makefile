@@ -11,15 +11,15 @@ WOLFBOOT=../wolfBoot
 WOLFBOOT_BIN=$(WOLFBOOT)/wolfboot.bin
 
 
-all: $(BOOT_IMG) $(WOLFBOOT_BIN)
+all: $(WOLFBOOT_BIN)
 
 $(BOOT_IMG):
+	@cp -f ./wolfboot-config $(WOLFBOOT)/.config
+	@make -C $(WOLFBOOT) clean
 	make wolfboot -C $(APP_SRC) IMAGE_VERSION=1
 
 
-$(WOLFBOOT_BIN): FORCE
-	@cp -f ./wolfboot-config $(WOLFBOOT)/.config
-	@make -C $(WOLFBOOT) clean
+$(WOLFBOOT_BIN): $(BOOT_IMG)
 	@make -C $(WOLFBOOT) wolfboot.bin
 
 clean: FORCE

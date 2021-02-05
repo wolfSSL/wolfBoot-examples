@@ -19,8 +19,9 @@ wolfboot-create-key: $(WOLFBOOT_KEYFILE)
 
 $(WOLFBOOT_KEYFILE):
 	make -C $(WOLFBOOT) clean
-	make -C $(WOLFBOOT) distclean
-	make -C $(WOLFBOOT) TARGET=nrf52 DEBUG=0 ecc256.der  \
+	rm -f $(WOLFBOOT)/ecc256.der
+	rm -f $(WOLFBOOT)/src/ecc256_pub_key.c
+	cd $(WOLFBOOT) && make ecc256.der && make include/target.h
 
 wolfboot: wolfboot-create-key link
 	@$(COLOR_ECHO)
