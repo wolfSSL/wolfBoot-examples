@@ -3,10 +3,10 @@ OBJCOPY:=$(CROSS_COMPILE)objcopy
 JLINK_OPTS = -Device NRF52840_xxAA -if swd -speed 1000
 
 
-APP_SRC:=$(PWD)/nrf52-gatt-service
+APP_SRC:=./nrf52-gatt-service
 BOOT_ELF:=nrf52-gatt-service/bin/nrf52840dk/nrf52-gatt-service.elf
 BOOT_IMG:=nrf52-gatt-service/bin/nrf52840dk/nrf52-gatt-service_v1_signed.bin
-UPDATE_IMG:=$(PWD)/nrf52-gatt-service/bin/nrf52840dk/nrf52-gatt-service_v2_signed.bin
+UPDATE_IMG:=./nrf52-gatt-service/bin/nrf52840dk/nrf52-gatt-service_v2_signed.bin
 WOLFBOOT=../wolfBoot
 WOLFBOOT_BIN=$(WOLFBOOT)/wolfboot.bin
 
