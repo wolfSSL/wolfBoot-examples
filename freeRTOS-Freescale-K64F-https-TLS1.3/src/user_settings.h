@@ -2,6 +2,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "portmacro.h"
+#include "semphr.h"
 #include "pico_stack.h"
 
 
@@ -10,7 +11,7 @@
 #define WOLFSSL_GENERAL_ALIGNMENT 4
 //#define DEBUG_WOLFSSL
 //#define WOLFSSL_LOG_PRINTF
-#define SINGLE_THREADED
+//#define SINGLE_THREADED
 #define WOLFSSL_USER_IO
 #define CUSTOM_RAND_GENERATE pico_rand
 #define CUSTOM_RAND_TYPE uint32_t 
@@ -95,4 +96,3 @@ static inline long XTIME(long *x) { return xTaskGetTickCount() / configTICK_RATE
 int pico_send(void *ssl, char *buf, int len, void *ctx);
 int pico_recv(void *ssl, char *buf, int len, void *ctx);
 #include <stdlib.h>
-#include "wolfssl/ssl.h"
