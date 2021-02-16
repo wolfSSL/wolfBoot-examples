@@ -1,4 +1,4 @@
-# Freescale-K64F-FreeRTOS-TLS1.3-Update
+# Freescale-K64F-FreeRTOS-SCP-Update
 
 Firmware update example on FreeRTOS, using wolfSSH
 
