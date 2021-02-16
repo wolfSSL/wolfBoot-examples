@@ -1,9 +1,9 @@
 /* main.c
  *
- * wolfSSL firmware update demo application 
+ * wolfSSL firmware update demo application
  * running on FRDM-K64F with freeRTOS, picoTCP, wolfSSL and wolfBoot
  *
- * This application demonstrates how to transfer a firmware update on 
+ * This application demonstrates how to transfer a firmware update on
  * Kinetis K64F, using HTTPS/TLS1.3.
  *
  * Firmware update is performed in wolfBoot after the image is transfered
@@ -27,7 +27,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
- 
+
+#include "user_settings.h"
 #include "pico_stack.h"
 #include "pico_ipv4.h"
 #include "pico_socket.h"
@@ -46,8 +47,12 @@
 #include "certs.h"
 #include "semphr.h"
 #include "wolfboot/wolfboot.h"
+#include "target.h"
 
-static const char ServerBanner[] = "wolfSSH Firmware update server\n";
+
+const char client_pubkey[] = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBNkI5JTP6D0lF42tbxX19cE87hztUS6FSDoGvPfiU0CgeNSbI+aFdKIzTP5CQEJSvm25qUzgDtH7oyaQROUnNvk= hansel\n";
+
+static char ServerBanner[] = "wolfSSH Firmware update server\n";
 extern unsigned int _stored_data;
 extern unsigned int _start_data;
 extern unsigned int _end_data;
@@ -109,7 +114,7 @@ static HeapRegion_t xHeapRegions[] =
   { &heap_sram_upper[0], sizeof(heap_sram_upper)},
   { NULL, 0 } //  << Terminates the array.
 };
-    
+
 
 static void socket_cb(uint16_t ev, struct pico_socket *s)
 {
@@ -162,7 +167,7 @@ static PwMap* PwMapNew(PwMapList* list, byte type, const byte* username,
         map->type = type;
         if (usernameSz >= sizeof(map->username))
             usernameSz = sizeof(map->username) - 1;
-        memcpy(map->username, username, usernameSz + 1);
+        XMEMCPY(map->username, username, usernameSz + 1);
         map->username[usernameSz] = 0;
         map->usernameSz = usernameSz;
 
@@ -210,7 +215,7 @@ static int UserAuth(byte authType,
         return WOLFSSH_USERAUTH_FAILURE;
 
     if (authType != WOLFSSH_USERAUTH_PUBLICKEY)
-        return WOLFSSH_USERAUTH_FAILURE;
+        return WOLFSSH_USERAUTH_INVALID_AUTHTYPE;
 
     if (authType == WOLFSSH_USERAUTH_PUBLICKEY) {
         c32toa(authData->sf.publicKey.publicKeySz, flatSz);
@@ -243,48 +248,80 @@ static int UserAuth(byte authType,
 #ifndef SSH_BUFFER_SIZE
     #define SSH_BUFFER_SIZE 4096
 #endif
+#define SCP_BUFFER_SIZE 4096
 
 #define SCRATCH_BUFFER_SIZE 1200
 static uint8_t scratch[SCRATCH_BUFFER_SIZE];
-static uint8_t fileBuffer[SSH_BUFFER_SIZE];
+static uint8_t fileBuffer[SCP_BUFFER_SIZE];
+static uint32_t fileBuffer_off = 0;
 
-static int update_send_data(WOLFSSH *ssh, char *inbuf, size_t size)
+/*
+typedef int (*WS_CallbackScpRecv)(WOLFSSH*, int, const char*, const char*,
+                                  int, word64, word64, word32, byte*, word32,
+                                  word32, void*);
+typedef int (*WS_CallbackScpSend)(WOLFSSH*, int, const char*, char*, word32,
+                                  word64*, word64*, int*, word32, word32*,
+                                  byte*, word32, void*);
+                                  */
+
+static int update_send_data(WOLFSSH* ssh, int state, const char* basePath,
+    const char* fileName, int fileMode, word64 mTime, word64 aTime,
+    word32 fw_sz, byte* buf, word32 bufSz, word32 fileOffset,
+    void* ctx)
 {
     return -1;
 }
 
-static int update_recv_data(WOLFSSH *ssh, char *inbuf, size_t size)
+
+static int update_recv_data(WOLFSSH* ssh, int state, const char* basePath,
+    const char* fileName, int fileMode, word64 mTime, word64 aTime,
+    word32 fw_sz, byte* buf, word32 bufSz, word32 file_off,
+    void* ctx)
 {
-    uint32_t fw_off = 0;
+    uint8_t *fw_dst = (uint8_t*)WOLFBOOT_PARTITION_UPDATE_ADDRESS;
+    uint32_t sz;
     uint32_t buf_off = 0;
-    uint32_t fw_siz = 0;
-    unsigned int i = 0;
-    int res;
-    uint8_t fw_buffer = (uint8_t*)WOLFBOOT_PARTITION_UPDATE_ADDRESS;
 
-    if (strncmp(&inbuf[i], "WOLF", 4) == 0) {
-        i+=4;
-        fw_siz = inbuf[i + 4] + ((inbuf[i + 5]) << 8) + ((inbuf[i + 6]) << 16) + ((inbuf[i + 7]) << 24);
+    if (fileName) {
+        if ((file_off == 0) && (bufSz > 0)) {
+            hal_flash_erase(fw_dst, WOLFBOOT_PARTITION_SIZE);
+            XMEMSET(fileBuffer, 0xFF, SCP_BUFFER_SIZE);
+            fileBuffer_off = 0;
+        }
+        if (fileBuffer_off > 0) {
+            file_off -= fileBuffer_off;
+            sz = SCP_BUFFER_SIZE - fileBuffer_off;
+            if (sz > bufSz)
+                sz = bufSz;
+            XMEMCPY(fileBuffer + fileBuffer_off, buf, sz);
+            buf_off += sz;
+            fileBuffer_off += sz;
+        }
+        if (fileBuffer_off == SCP_BUFFER_SIZE) {
+            hal_flash_write(fw_dst + file_off, fileBuffer, SCP_BUFFER_SIZE);
+            fileBuffer_off = 0;
+            XMEMSET(fileBuffer, 0xFF, SCP_BUFFER_SIZE);
+            file_off += SCP_BUFFER_SIZE;
+        }
+        while (buf_off < bufSz) {
+            sz = SCP_BUFFER_SIZE;
+            if ((bufSz - buf_off) < sz) {
+                sz = bufSz - buf_off;
+                XMEMCPY(fileBuffer + fileBuffer_off, buf + buf_off, sz);
+                fileBuffer_off += sz;
+            } else {
+                hal_flash_write(fw_dst + file_off, buf + buf_off, sz);
+            }
+            if ((fileBuffer_off > 0) && (file_off + fileBuffer_off >= fw_sz)) {
+                hal_flash_write(fw_dst + file_off, fileBuffer, SCP_BUFFER_SIZE);
+                fileBuffer_off = 0;
+                XMEMSET(fileBuffer, 0xFF, SCP_BUFFER_SIZE);
+            }
+            buf_off += sz;
+            file_off += sz;
+        }
     }
-    if ((fw_siz > WOLFBOOT_PARTITION_SIZE) || (fw_siz < WOLFBOOT_SECTOR_SIZE))
-        goto internal_error;
-    fw_siz += 0x100;
-
-    if (i < size) {
-        printf("Write at %d sz: %d\n", buf_off, i);
-        buf_off = size - i;
-    }
-    hal_flash_unlock();
-    while(fw_off < fw_siz) {
-        /* TODO: stream_recv */
-    }
-    if (fw_off == fw_siz) {
-        return -1;
-    }
-
-internal_error:
-    return -1;
-
+    return WS_SCP_CONTINUE;
 }
 
 static int load_key(byte isEcc, byte* buf, word32 bufSz)
@@ -369,16 +406,37 @@ static int LoadPublicKeyBuffer(byte* buf, word32 bufSz, PwMapList* list)
     return 0;
 }
 
+int wolfssh_socket_send(WOLFSSH *ssh, void *_data, word32 len, void *_ctx)
+{
+    struct pico_socket *cli = (struct pico_socket *)_ctx;
+    uint8_t *data = _data;
+    return pico_socket_write(cli, data, len);
+}
+
+int wolfssh_socket_recv(WOLFSSH *ssh, void *_data, word32 len, void *_ctx)
+{
+    struct pico_socket *cli = (struct pico_socket *)_ctx;
+    uint8_t *data = _data;
+    return pico_socket_read(cli, data, len);
+}
+
+/* Custom file header interface for SCP */
+static char file_header[] = "C0700 0 UPDATE.BIN";
+char *scp_get_file_hdr(WOLFSSH *ssh)
+{
+    return file_header;
+}
+
 void MainTask(void *pv)
 {
     int res;
     struct pico_socket *s;
-    uint16_t port = short_be(443);
+    uint16_t port = short_be(22);
     uint32_t bufSz;
     WOLFSSH *ssh;
     struct pico_ip4 any;
     wolfSSH_Init();
-    PwMapList pwMapList;
+    PwMapList pubkeyMapList;
     xSemaphoreTake(picotcp_started, portMAX_DELAY);
     any.addr = 0;
 
@@ -389,21 +447,27 @@ void MainTask(void *pv)
     cli = pico_socket_accept(s, NULL, NULL);
 
     WOLFSSH_CTX *ctx = wolfSSH_CTX_new(WOLFSSH_ENDPOINT_SERVER, NULL);
-    memset(&pwMapList, 0, sizeof(pwMapList));
+    memset(&pubkeyMapList, 0, sizeof(pubkeyMapList));
     wolfSSH_SetUserAuth(ctx, UserAuth);
     wolfSSH_CTX_SetBanner(ctx, ServerBanner);
 
+    /* Load key */
     bufSz = load_key(1, scratch, SCRATCH_BUFFER_SIZE);
-    if (bufSz == 0) 
+    if (bufSz == 0)
         while(1)
             ;
     if (wolfSSH_CTX_UsePrivateKey_buffer(ctx, scratch, bufSz,
                 WOLFSSH_FORMAT_ASN1) < 0) {
-        fprintf(stderr, "Couldn't use key buffer.\n");
         while(1)
             ;
     }
-    LoadPublicKeyBuffer(scratch, bufSz, &pwMapList);
+    /* Load client public keys */
+    strcpy(scratch, client_pubkey);
+    LoadPublicKeyBuffer(scratch, strlen(scratch), &pubkeyMapList);
+
+    /* Install ctx send/recv I/O */
+    wolfSSH_SetIORecv(ctx, wolfssh_socket_recv);
+    wolfSSH_SetIOSend(ctx, wolfssh_socket_send);
 
     while(!cli) {
         vTaskDelay(pdMS_TO_TICKS(5));
@@ -416,20 +480,23 @@ void MainTask(void *pv)
     wolfSSH_SetScpRecv(ctx, update_recv_data);
     wolfSSH_SetScpSend(ctx, update_send_data);
 
+    /* Set auth CTX based on the MapList */
+    wolfSSH_SetUserAuthCtx(ssh, &pubkeyMapList);
+
     wolfBoot_success();
     while (1) {
-        wolfSSH_SetUserAuthCtx(ssh, &pwMapList);
+        wolfSSH_SetUserAuthCtx(ssh, &pubkeyMapList);
         wolfSSH_SetIOReadCtx(ssh, cli);
         wolfSSH_SetIOWriteCtx(ssh, cli);
         res = wolfSSH_accept(ssh);
         if (res == WS_SCP_COMPLETE) {
-            printf("scp file transfer completed\n");
+            //printf("scp file transfer completed\n");
             wolfBoot_update_trigger();
             /* Wait one second, reboot */
             vTaskDelay(pdMS_TO_TICKS(1000));
             reboot();
         } else if (res == WS_SFTP_COMPLETE) {
-            printf("SFTP is not supported.\n");
+            //printf("SFTP is not supported.\n");
         }
         wolfSSH_stream_exit(ssh, 0);
         pico_socket_close(cli);
@@ -450,7 +517,7 @@ void PicoTask(void *pv) {
     pico_stack_init();
     dev = pico_enet_create("en0");
     if (dev) {
-       pico_ipv4_link_add(dev, addr, mask); 
+       pico_ipv4_link_add(dev, addr, mask);
        pico_ipv4_route_add(any, any, gw, 1, NULL);
        LED_GREEN_ON();
     }
@@ -458,7 +525,7 @@ void PicoTask(void *pv) {
     pico_stack_tick();
 
     xLastWakeTime = xTaskGetTickCount();
-    while(1) { 
+    while(1) {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
         pico_stack_tick();
     }
@@ -474,7 +541,7 @@ int main(void) {
 
     LED_GREEN_INIT(1);
     vPortDefineHeapRegions(xHeapRegions); // Pass the array into vPortDefineHeapRegions(). Must be called first!
-    
+
     picotcp_started = xSemaphoreCreateBinary();
     picotcp_rx_data = xSemaphoreCreateBinary();
 
@@ -508,3 +575,4 @@ int main(void) {
 void SystemInit(void)
 {
 }
+

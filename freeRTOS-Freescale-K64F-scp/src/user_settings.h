@@ -40,6 +40,7 @@ static inline int pico_recv(void *ssl, char *buf, int len, void *ctx)
 
 
 
+
 #define NO_64BIT
 #define WOLFSSL_GENERAL_ALIGNMENT 4
 //#define DEBUG_WOLFSSL
@@ -53,9 +54,14 @@ static inline int pico_recv(void *ssl, char *buf, int len, void *ctx)
 #define XMALLOC(s, h, type) pvPortMalloc((s))
 #define XREALLOC(p, n, h, t) pvPortRealloc((p), (n))
 #define XFREE(p, h, type)  vPortFree((p))
+#define NO_SCP_TIMESTAMP
+#define NO_SCP_ENTER_DIRECTORY
+#define NO_WOLFSSH_CLIENT
+#define WSCPFILEHDR scp_get_file_hdr
+
 #define TIME_OVERRIDES
 static inline long XTIME(long *x) { return xTaskGetTickCount() / configTICK_RATE_HZ;}
-#define WTIME XTIME
+//#define WTIME XTIME
 #define WOLFSSH_NO_TIMESTAMP
 #define NO_ASN_TIME
 #define WOLFSSL_USER_CURRTIME
@@ -85,20 +91,6 @@ static inline long XTIME(long *x) { return xTaskGetTickCount() / configTICK_RATE
 #define WOLFSSL_SP_SMALL
 #define SP_WORD_SIZE 32
 
-/* Edwards */
-#if 0
-#   define HAVE_ED25519
-#   define ED25519_SMALL
-#   define USE_FAST_MATH
-#   define WOLFSSL_SHA512
-#   define HAVE_CURVE25519
-#   define WOLFSSL_SHA512
-
-/* Chacha20-poly1305 */
-#   define HAVE_CHACHA
-#   define HAVE_POLY1305
-#endif
-
 /* RSA */
 #define HAVE_RSA
 #define USE_CERT_BUFFERS_2048
@@ -111,13 +103,19 @@ static inline long XTIME(long *x) { return xTaskGetTickCount() / configTICK_RATE
 #define USE_SLOW_SHA2
 //#define USE_SLOW_SHA512
 
+/* AES */
+#define HAVE_AESGCM
+#define HAVE_AESCCM
+#define HAVE_AES_COUNTER
+#define HAVE_AES_DIRECT
+
+
 /* Disabled ciphers */
 #define NO_DES3
 #define NO_MD4
 #define NO_RABBIT
 #define NO_RC4
 #define NO_HC128
-#define NO_HASH_DBRG
 
 
 #define NO_WRITEV

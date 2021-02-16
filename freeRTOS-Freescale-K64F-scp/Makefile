@@ -35,7 +35,10 @@ endif
 
 
 CFLAGS+=-I$(KINETIS_DRIVERS)/drivers -I$(KINETIS_DRIVERS) -DCPU_MK64FN1M0VLL12 -I$(KINETIS_CMSIS)/Include -I$(PHY) -DDEBUG_CONSOLE_ASSERT_DISABLE=1
-LDFLAGS=$(CFLAGS) -Wl,-gc-sections -ffreestanding -nostartfiles -lc -lnosys -specs=nano.specs -Wl,-Map=image.map
+LDFLAGS=$(CFLAGS) -Wl,-gc-sections -ffreestanding -nostartfiles -lc -lnosys -Wl,-Map=image.map -specs=nano.specs
+
+
+
 
 OBJS:= \
   $(KINETIS_DRIVERS)/drivers/fsl_clock.o \
@@ -46,13 +49,12 @@ OBJS:= \
   $(KINETIS_DRIVERS)/drivers/fsl_sysmpu.o \
   $(WOLFBOOT)/src/libwolfboot.o \
   $(WOLFBOOT)/hal/kinetis.o \
-  $(WOLFSSH_ROOT)/src/wolfscp.o \
+  $(WOLFSSH_ROOT)/src/internal.o \
   $(WOLFSSH_ROOT)/src/ssh.o \
   $(WOLFSSH_ROOT)/src/log.o \
-  $(WOLFSSH_ROOT)/src/internal.o \
-  $(WOLFSSH_ROOT)/src/misc.o \
   $(WOLFSSH_ROOT)/src/io.o \
   $(WOLFSSH_ROOT)/src/port.o \
+  $(WOLFSSH_ROOT)/src/wolfscp.o \
   $(WOLFSSL_BUILD)/wolfcrypt/signature.o \
   src/clock_config.o \
   src/main.o \
@@ -132,11 +134,12 @@ wolfboot-align.bin:CFLAGS=-mthumb -Wall -Wextra -Wno-main -Wstack-usage=1024 -ff
 	-DWOLFSSL_USER_SETTINGS -I$(WOLFSSL_ROOT)  -DPICO_PORT_CUSTOM \
 	-mthumb -mlittle-endian -mthumb-interwork -ffreestanding -fno-exceptions
 wolfboot-align.bin:CFLAGS+=-I$(KINETIS_DRIVERS)/drivers -I$(KINETIS_DRIVERS) -DCPU_MK64FN1M0VLL12 -I$(KINETIS_CMSIS)/Include -I$(PHY) -DDEBUG_CONSOLE_ASSERT_DISABLE=1 -mcpu=cortex-m3 -DNVM_FLASH_WRITEONCE=1
-wolfboot-align.bin:LDFLAGS=$(CFLAGS) -Wl,-gc-sections -ffreestanding -nostartfiles -lc -lnosys -specs=nano.specs -Wl,-Map=image.map
+wolfboot-align.bin:LDFLAGS=$(CFLAGS) -Wl,-gc-sections -ffreestanding -nostartfiles -lc -lnosys -Wl,-Map=image.map -specs=nano.specs
 wolfboot-align.bin: wolfboot_target
 	rm -f ../wolfBoot/hal/kinetis.o
 	rm -f ../wolfBoot/src/*.o
 	rm -f $(KINETIS_DRIVERS)/drivers/*.o
+	cp src/wolfboot.config ../wolfBoot/.config
 	make -C ../wolfBoot wolfboot-align.bin
 	cp ../wolfBoot/wolfboot-align.bin .
 
