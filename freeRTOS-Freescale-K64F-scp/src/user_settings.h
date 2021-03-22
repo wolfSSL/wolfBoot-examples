@@ -54,14 +54,10 @@ static inline int pico_recv(void *ssl, char *buf, int len, void *ctx)
 #define XMALLOC(s, h, type) pvPortMalloc((s))
 #define XREALLOC(p, n, h, t) pvPortRealloc((p), (n))
 #define XFREE(p, h, type)  vPortFree((p))
-#define NO_SCP_TIMESTAMP
-#define NO_SCP_ENTER_DIRECTORY
 #define NO_WOLFSSH_CLIENT
-#define WSCPFILEHDR scp_get_file_hdr
 
 #define TIME_OVERRIDES
 static inline long XTIME(long *x) { return xTaskGetTickCount() / configTICK_RATE_HZ;}
-//#define WTIME XTIME
 #define WOLFSSH_NO_TIMESTAMP
 #define NO_ASN_TIME
 #define WOLFSSL_USER_CURRTIME

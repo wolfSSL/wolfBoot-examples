@@ -255,21 +255,47 @@ static uint8_t scratch[SCRATCH_BUFFER_SIZE];
 static uint8_t fileBuffer[SCP_BUFFER_SIZE];
 static uint32_t fileBuffer_off = 0;
 
-/*
-typedef int (*WS_CallbackScpRecv)(WOLFSSH*, int, const char*, const char*,
-                                  int, word64, word64, word32, byte*, word32,
-                                  word32, void*);
-typedef int (*WS_CallbackScpSend)(WOLFSSH*, int, const char*, char*, word32,
-                                  word64*, word64*, int*, word32, word32*,
-                                  byte*, word32, void*);
-                                  */
+static int default_filemode = 0700;
 
-static int update_send_data(WOLFSSH* ssh, int state, const char* basePath,
-    const char* fileName, int fileMode, word64 mTime, word64 aTime,
-    word32 fw_sz, byte* buf, word32 bufSz, word32 fileOffset,
-    void* ctx)
+/* CallbackScpSend */
+int update_send_data(WOLFSSH* ssh, int state, const char* peerRequest,
+        char* fileName, word32 fileNameSz, word64* mTime, word64* aTime,
+        int* fileMode, word32 fileOffset, word32* totalFileSz, byte* buf,
+        word32 bufSz, void* ctx)
 {
-    return -1;
+    uint32_t base = 0xFFFFFFFF;
+    static int part = 0;
+    if (state == 0) {
+        part = 0;
+        return WS_SUCCESS;
+    }
+
+    if ((state == 6) && (part == 0) && peerRequest) {
+        if (strcmp(peerRequest,"/boot.bin") == 0)
+            part = 1;
+        else if (strcmp(peerRequest,"/update.bin") == 0)
+            part = 2;
+        else
+            return WS_SCP_ABORT;
+        *fileMode = default_filemode;
+        *totalFileSz = WOLFBOOT_PARTITION_SIZE;
+    }
+    if (part && (state == 6)) {
+        if (part == 1)
+            base = WOLFBOOT_PARTITION_BOOT_ADDRESS;
+        else
+            base = WOLFBOOT_PARTITION_UPDATE_ADDRESS;
+
+        if (bufSz > 0) {
+            XMEMCPY(buf, base + fileOffset, bufSz);
+        } else {
+            return WS_EOF;
+        }
+        if (bufSz + fileOffset >= WOLFBOOT_PARTITION_SIZE)
+            return WS_EOF;
+        return bufSz;
+    }
+    return WS_SUCCESS;
 }
 
 
@@ -418,13 +444,6 @@ int wolfssh_socket_recv(WOLFSSH *ssh, void *_data, word32 len, void *_ctx)
     struct pico_socket *cli = (struct pico_socket *)_ctx;
     uint8_t *data = _data;
     return pico_socket_read(cli, data, len);
-}
-
-/* Custom file header interface for SCP */
-static char file_header[] = "C0700 0 UPDATE.BIN";
-char *scp_get_file_hdr(WOLFSSH *ssh)
-{
-    return file_header;
 }
 
 void MainTask(void *pv)

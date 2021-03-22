@@ -53,7 +53,7 @@ The public key allowed by the board is the ECDSA key provided in the wolfSSH exa
 First of all, change the permission of this example private key distributed with wolfSSH. A SCP client may refuse to use SSH keys that are publicly readable. This can be done via:
 
 ```
-chmod 0700 wolfssh/keys/hansel-key-ecc.pem
+chmod 0600 wolfssh/keys/hansel-key-ecc.pem
 ```
 
 To initiate a firmware update, transfer the file using scp. Use the '-i' option to force public-key based authentication using hansel's private key as follows:

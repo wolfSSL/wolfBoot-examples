@@ -66,6 +66,7 @@ OBJS:= \
   freeRTOS/stream_buffer.o \
   freeRTOS/tasks.o \
   freeRTOS/timers.o \
+  freeRTOS/printf-stdarg.o \
   $(FREERTOS_PORT)/port.o \
   freeRTOS/portable/MemMang/heap_5.o \
   src/startup_mk64f12.o \
