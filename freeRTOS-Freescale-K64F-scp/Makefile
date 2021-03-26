@@ -90,6 +90,7 @@ WOLFSSL_OBJS += 	\
 	$(WOLFSSL_BUILD)/wolfcrypt/error.o  \
 	$(WOLFSSL_BUILD)/wolfcrypt/ecc.o  \
 	$(WOLFSSL_BUILD)/wolfcrypt/ed25519.o  \
+	$(WOLFSSL_BUILD)/wolfcrypt/dh.o \
 	$(WOLFSSL_BUILD)/wolfcrypt/rsa.o  \
 	$(WOLFSSL_BUILD)/wolfcrypt/fe_low_mem.o  \
 	$(WOLFSSL_BUILD)/wolfcrypt/fe_operations.o  \
@@ -112,7 +113,8 @@ WOLFSSL_OBJS += 	\
 	$(WOLFSSL_BUILD)/wolfcrypt/wolfmath.o
 	
 OBJS_SPMATH:= $(WOLFSSL_BUILD)/wolfcrypt/sp_c32.o  \
- 		 		$(WOLFSSL_BUILD)/wolfcrypt/sp_int.o
+	$(WOLFSSL_BUILD)/wolfcrypt/sp_int.o \
+	$(WOLFSSL_BUILD)/wolfcrypt/sp_cortexm.o
 
 OBJS+=$(WOLFSSL_OBJS) $(OBJS_SPMATH)
 LIBS+=build/lib/libpicotcp.a
@@ -184,7 +186,7 @@ image.elf: wolfboot_target $(WOLFSSL_BUILD)/wolfcrypt $(LIBS) $(OBJS) $(LSCRIPT)
 	$(LD) $(LDFLAGS) -Wl,--start-group $(OBJS) $(LIBS) -Wl,--end-group -o $@ -T $(LSCRIPT)
 
 clean:
-	rm -f *.bin *.elf $(OBJS) wolfboot.map *.bin  *.hex src/*.o freeRTOS/*.o $(FREERTOS_PORT)/*.o *.map tags
+	rm -f *.bin *.elf $(OBJS) wolfboot.map *.bin  *.hex src/*.o freeRTOS/*.o wolfssh/src/*.o $(FREERTOS_PORT)/*.o *.map tags
 	make -C picotcp clean
 
 FORCE:

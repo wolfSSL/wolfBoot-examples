@@ -86,6 +86,9 @@ static inline long XTIME(long *x) { return xTaskGetTickCount() / configTICK_RATE
 #define WOLFSSL_SP_MATH
 #define WOLFSSL_SP_SMALL
 #define SP_WORD_SIZE 32
+#define WOLFSSL_SP_MATH_ALL
+#define WOLFSSL_SP_ASM
+#define WOLFSSL_SP_ARM_CORTEX_M_ASM
 
 /* RSA */
 #define HAVE_RSA
@@ -105,7 +108,6 @@ static inline long XTIME(long *x) { return xTaskGetTickCount() / configTICK_RATE
 #define HAVE_AES_COUNTER
 #define HAVE_AES_DIRECT
 
-
 /* Disabled ciphers */
 #define NO_DES3
 #define NO_MD4
@@ -118,7 +120,6 @@ static inline long XTIME(long *x) { return xTaskGetTickCount() / configTICK_RATE
 #define NO_DEV_RANDOM
 #define NO_FILESYSTEM
 #define NO_MAIN_DRIVER
-
 
 int pico_send(void *ssl, char *buf, int len, void *ctx);
 int pico_recv(void *ssl, char *buf, int len, void *ctx);
