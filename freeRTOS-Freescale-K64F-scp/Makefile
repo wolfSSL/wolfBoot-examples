@@ -4,10 +4,10 @@ LD:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)gcc
 OBJCOPY:=$(CROSS_COMPILE)objcopy
 SIZE:=$(CROSS_COMPILE)size
-KINETIS?=$(HOME)/src/FRDM-K64F
-KINETIS_DRIVERS?=$(KINETIS)/devices/MK64F12
-KINETIS_CMSIS?=$(KINETIS)/CMSIS
-PHY=$(KINETIS)/components/phyksz8081
+MCUXPRESSO?=$(HOME)/src/FRDM-K64F
+MCUXPRESSO_DRIVERS?=$(MCUXPRESSO)/devices/MK64F12
+MCUXPRESSO_CMSIS?=$(MCUXPRESSO)/CMSIS
+PHY=$(MCUXPRESSO)/components/phyksz8081
 FREERTOS_PORT:=freeRTOS/portable/GCC/ARM_CM4F
 WOLFBOOT:=../wolfBoot
 WOLFSSL_ROOT:=../wolfBoot/lib/wolfssl
@@ -34,19 +34,19 @@ else
 endif
 
 
-CFLAGS+=-I$(KINETIS_DRIVERS)/drivers -I$(KINETIS_DRIVERS) -DCPU_MK64FN1M0VLL12 -I$(KINETIS_CMSIS)/Include -I$(PHY) -DDEBUG_CONSOLE_ASSERT_DISABLE=1
+CFLAGS+=-I$(MCUXPRESSO_DRIVERS)/drivers -I$(MCUXPRESSO_DRIVERS) -DCPU_MK64FN1M0VLL12 -I$(MCUXPRESSO_CMSIS)/Include -I$(PHY) -DDEBUG_CONSOLE_ASSERT_DISABLE=1
 LDFLAGS=$(CFLAGS) -Wl,-gc-sections -ffreestanding -nostartfiles -lc -lnosys -Wl,-Map=image.map -specs=nano.specs
 
 
 
 
 OBJS:= \
-  $(KINETIS_DRIVERS)/drivers/fsl_clock.o \
-  $(KINETIS_DRIVERS)/drivers/fsl_ftfx_flash.o \
-  $(KINETIS_DRIVERS)/drivers/fsl_ftfx_cache.o \
-  $(KINETIS_DRIVERS)/drivers/fsl_ftfx_controller.o \
-  $(KINETIS_DRIVERS)/drivers/fsl_enet.o \
-  $(KINETIS_DRIVERS)/drivers/fsl_sysmpu.o \
+  $(MCUXPRESSO_DRIVERS)/drivers/fsl_clock.o \
+  $(MCUXPRESSO_DRIVERS)/drivers/fsl_ftfx_flash.o \
+  $(MCUXPRESSO_DRIVERS)/drivers/fsl_ftfx_cache.o \
+  $(MCUXPRESSO_DRIVERS)/drivers/fsl_ftfx_controller.o \
+  $(MCUXPRESSO_DRIVERS)/drivers/fsl_enet.o \
+  $(MCUXPRESSO_DRIVERS)/drivers/fsl_sysmpu.o \
   $(WOLFBOOT)/src/libwolfboot.o \
   $(WOLFBOOT)/hal/kinetis.o \
   $(WOLFSSH_ROOT)/src/internal.o \
@@ -136,14 +136,14 @@ wolfboot-align.bin:CFLAGS=-mthumb -Wall -Wextra -Wno-main -Wstack-usage=1024 -ff
 	-IfreeRTOS -IfreeRTOS/include -I build/include -I$(WOLFBOOT)/include -I$(WOLFBOOT) \
 	-DWOLFSSL_USER_SETTINGS -I$(WOLFSSL_ROOT)  -DPICO_PORT_CUSTOM \
 	-mthumb -mlittle-endian -mthumb-interwork -ffreestanding -fno-exceptions
-wolfboot-align.bin:CFLAGS+=-I$(KINETIS_DRIVERS)/drivers -I$(KINETIS_DRIVERS) -DCPU_MK64FN1M0VLL12 -I$(KINETIS_CMSIS)/Include -I$(PHY) -DDEBUG_CONSOLE_ASSERT_DISABLE=1 -mcpu=cortex-m3 -DNVM_FLASH_WRITEONCE=1
+wolfboot-align.bin:CFLAGS+=-I$(MCUXPRESSO_DRIVERS)/drivers -I$(MCUXPRESSO_DRIVERS) -DCPU_MK64FN1M0VLL12 -I$(MCUXPRESSO_CMSIS)/Include -I$(PHY) -DDEBUG_CONSOLE_ASSERT_DISABLE=1 -mcpu=cortex-m3 -DNVM_FLASH_WRITEONCE=1
 wolfboot-align.bin:LDFLAGS=$(CFLAGS) -Wl,-gc-sections -ffreestanding -nostartfiles -lc -lnosys -Wl,-Map=image.map -specs=nano.specs
 wolfboot-align.bin: wolfboot_target
 	rm -f ../wolfBoot/hal/kinetis.o
 	rm -f ../wolfBoot/src/*.o
-	rm -f $(KINETIS_DRIVERS)/drivers/*.o
+	rm -f $(MCUXPRESSO_DRIVERS)/drivers/*.o
 	cp src/wolfboot.config ../wolfBoot/.config
-	make -C ../wolfBoot wolfboot-align.bin
+	make -C ../wolfBoot wolfboot-align.bin MCUXPRESSO=$(MCUXPRESSO)
 	cp ../wolfBoot/wolfboot-align.bin .
 
 standalone:LSCRIPT:=k64f_standalone.ld

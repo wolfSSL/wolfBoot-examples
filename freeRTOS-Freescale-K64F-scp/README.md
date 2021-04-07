@@ -34,9 +34,9 @@ Kinetis SDK `FRDM-K64F` (can be downloaded from NXP website).
 
 ### Compiling
 
-The path to the Kinetis SDK directory must be passed to make through the `KINETIS=` variable.
+The path to the Kinetis SDK directory must be passed to make through the `MCUXPRESSO=` variable.
 
-Running `make KINETIS=/path/to/FRDM-K64F` assembles the following images:
+Running `make MCUXPRESSO=/path/to/FRDM-K64F` assembles the following images:
   - wolfBoot compiled to run on FRDM-K64F
   - freeRTOS with automatic start-up of the firmware update process, in a signed image that can be verified by wolfBoot during start-up
 
