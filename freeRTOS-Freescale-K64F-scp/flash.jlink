@@ -1,0 +1,6 @@
+loadfile nrf5x-softdevice/components/softdevice/s1xx_iot/s1xx-iot-prototype3_nrf52_softdevice.hex
+loadbin wolfBoot/wolfboot.bin 0x1f000
+loadbin dtls-ota/dtls-ota-signed.bin 0x2f000
+r
+g
+q
