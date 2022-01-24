@@ -19,3 +19,9 @@
 [submodule "riotOS-nrf52840dk-ble/RIOT"]
 	path = riotOS-nrf52840dk-ble/RIOT
 	url = https://github.com/RIOT-OS/RIOT
+[submodule "freeRTOS-Freescale-K64F-scp/wolfssh"]
+	path = freeRTOS-Freescale-K64F-scp/wolfssh
+	url = https://github.com/wolfssl/wolfssh
+[submodule "freeRTOS-Freescale-K64F-scp/picotcp"]
+	path = freeRTOS-Freescale-K64F-scp/picotcp
+	url = https://github.com/tass-belgium/picotcp

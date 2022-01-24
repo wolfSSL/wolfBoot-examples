@@ -9,10 +9,13 @@ This repository contains example applications using [wolfBoot](https://github.co
    * DTLS/IPv6/6LoWPAN/BLE secure firmware update mechanism, with [contiki OS on Nordic nRF52 platform](contiki-nrf52)
    * USB CDC-ACM signed firmware update mechanism, with [RIOT-OS on Atmel SAM-R21 platform](riotOS-samr21)
    * HTTPS over TLS1.3 signed firmware update mechanism, with [freeRTOS on Freescale K64F](freeRTOS-Freescale-K64F-https-TLS1.3)
+   * wolfSSH SCP transfer firmware update mechanism, with [freeRTOS on Freescale K64F](freeRTOS-Freescale-K64F-scp)
+   * BLE-GATT FOTA service using [RIOT-OS and Nimble on Nordic nRF52](riotOS-nrf52840dk-ble)
+   * Measured boot demo using [wolfTPM on STM32F4](test-app-STM32F4-measured-boot)
 
 ## License
 
 See the documentation within each component subdirectory for more information about using and distributing this software.
 
-wolfBoot, wolfSSL (formerly known as CyaSSL) and wolfCrypt are Copyright (c) 2006-2018 wolfSSL Inc., and licensed for use under GPLv2 (see [LICENSE](LICENSE)) 
+wolfBoot, wolfSSL (formerly known as CyaSSL) and wolfCrypt are Copyright (c) 2006-2018 wolfSSL Inc., and licensed for use under GPLv2 (see [LICENSE](LICENSE))
 
