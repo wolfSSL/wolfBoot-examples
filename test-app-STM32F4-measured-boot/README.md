@@ -74,11 +74,11 @@ Note: Make sure the Ground connection between your USB-UART converter is connect
 
 Before compiling make sure the git submodules are initialized and updated correctly. Use the following commands to make sure:
 
-`wolfboot-examples/$ git submodule --init --update`
+`wolfboot-examples/$ git submodule update --init `
 
 `wolfboot-examples/$ cd wolfBoot`
 
-`wolfboot-examples/wolfBoot$ git submodule --init --update`
+`wolfboot-examples/wolfBoot$ git submodule update --init`
 
 Enter the project folder for this example:
 
