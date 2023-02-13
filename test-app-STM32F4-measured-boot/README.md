@@ -29,7 +29,7 @@ The following diagram is a big picture overview of the different guarantee Secur
 
 ## Details
 
-Secure Boot is a way for the system owner to guarantee that the device started with a geniune software. However, this information is not available to the system later on. Therefore, the application runtime must assume any and all software that was run before it is geniune. Measured Boot eliminates the guessing element and provides a way for the application to know the state of the system before it took control.
+Secure Boot is a way for the system owner to guarantee that the device started with a genuine software. However, this information is not available to the system later on. Therefore, the application runtime must assume any and all software that was run before it is genuine. Measured Boot eliminates the guessing element and provides a way for the application to know the state of the system before it took control.
 
 Measured Boot could evaluate a single component like firmware or application image, or can evaluate multiple components like system settings and user configuration. Additionally, the golden value could be stored within the system for the application to self-evaluate its state without the need of a remote server.
 
@@ -55,7 +55,7 @@ Hardware connections must be made between the TPM2.0 module and the STM32F4 boar
 | GND      | Ground        | Pin 6         |
 
 
-UART1 on the STM32F4 is used by default. The default baud rate is 115200. 
+UART1 on the STM32F4 is used by default. The default baud rate is 115200.
 
 The UART Pinout can be found below:
 
@@ -74,11 +74,11 @@ Note: Make sure the Ground connection between your USB-UART converter is connect
 
 Before compiling make sure the git submodules are initialized and updated correctly. Use the following commands to make sure:
 
-`wolfboot-examples/$ git submodule --init --update`
+`wolfboot-examples/$ git submodule update --init --recursive`
 
 `wolfboot-examples/$ cd wolfBoot`
 
-`wolfboot-examples/wolfBoot$ git submodule --init --update`
+`wolfboot-examples/wolfBoot$ git submodule update --init --recursive`
 
 Enter the project folder for this example:
 
@@ -159,7 +159,7 @@ App started
 Measured Boot PCR is = 0x01020304050607080910
 ```
 
-This value is the one created by wolfBoot during start of the device. This value is the result of PCR Extend operation and depends on the firmware image loaded. Using the same firmware image should produce the same PCR measurement. By using different firmware images a change in the PCR value can be obsereved, simulating tampering.
+This value is the one created by wolfBoot during start of the device. This value is the result of PCR Extend operation and depends on the firmware image loaded. Using the same firmware image should produce the same PCR measurement. By using different firmware images a change in the PCR value can be observed, simulating tampering.
 
 For more information about measured boot contact us at facts@wolfssl.com
 
