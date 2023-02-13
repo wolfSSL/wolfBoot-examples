@@ -35,7 +35,7 @@ More information about wolfBoot upgrade mechanism can be found in the [wolfBoot]
 
 ## Firmware update
 
-The directory [fw-update-server](fw-update-server) contains a small exaple DTLS v1.2 server that can be used to transfer a (signed) image to any client requesting a firmware upgrade.
+The directory [fw-update-server](fw-update-server) contains a small example DTLS v1.2 server that can be used to transfer a (signed) image to any client requesting a firmware upgrade.
 To compile fw-update-server for the host system, simply run `make` within the directory.
 
 To run the fw-update-server, simply run `./server` followed by the path of the signed firmware to transfer. The firmware previously compiled and signed with `make` can be found in `fw-update/bin/samr21-xpro/fw-update.bin.v5.signed`.
