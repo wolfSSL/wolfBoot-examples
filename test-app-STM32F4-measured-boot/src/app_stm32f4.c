@@ -322,7 +322,7 @@ void main(void)
     led_pwm_setup();
     pwm_init(CPU_FREQ, 0);
 
-    /* Dim the led by altering the PWM duty-cicle
+    /* Dim the led by altering the PWM duty-cycle
      * in isr_tim2 (timer.c)
      *
      * Every 50ms, the duty cycle of the PWM connected
