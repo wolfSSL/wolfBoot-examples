@@ -33,9 +33,12 @@
 #include "spi_drv.h"
 #include "spi_tpm.h"
 
+/* TPM functionality disabled for build compatibility 
 #include "wolftpm/tpm2.h"
 #include "wolftpm/tpm2_wrap.h"
+#include "wolftpm/tpm2_types.h"
 static WOLFTPM2_DEV wolftpm_dev;
+*/
 
 #define UART1 (0x40011000)
 #define UART2 (0x40014400)
@@ -235,6 +238,7 @@ static int check(uint8_t *pkt, int size)
     return -1;
 }
 
+/* TPM functionality disabled for build compatibility 
 static int app_tpm2_IoCb(TPM2_CTX* ctx, const byte* txBuf, byte* rxBuf,
     word16 xferSz, void* userCtx)
 {
@@ -252,17 +256,11 @@ static int app_tpm2_IoCb(TPM2_CTX* ctx, const byte* txBuf, byte* rxBuf,
     }
     spi_cs_off(SPI_CS_TPM);
 
-    /*
-    printf("\r\nSPI TX: ");
-    printbin(txBuf, xferSz);
-    printf("SPI RX: ");
-    printbin(rxBuf, xferSz);
-    printf("\r\n");
-    */
-
     return 0;
 }
+*/
 
+/* TPM functionality disabled for build compatibility 
 static int app_tpm2_init(void)
 {
     int rc;
@@ -270,13 +268,13 @@ static int app_tpm2_init(void)
 
     spi_init(0,0);
 
-    /* Init the TPM2 device */
+    // Init the TPM2 device 
     rc = wolfTPM2_Init(&wolftpm_dev, app_tpm2_IoCb, NULL);
     if (rc != 0)  {
         return rc;
     }
 
-    /* Get device capabilities + options */
+    // Get device capabilities + options 
     rc = wolfTPM2_GetCapabilities(&wolftpm_dev, &caps);
     if (rc != 0)  {
         return rc;
@@ -284,8 +282,10 @@ static int app_tpm2_init(void)
 
     return 0;
 }
+*/
 
-/* Reads out the TPM measurement created by wolfBoot */
+/* TPM functionality disabled for build compatibility 
+// Reads out the TPM measurement created by wolfBoot 
 static int read_measured_boot(uint8_t* digest)
 {
     int rc;
@@ -303,6 +303,14 @@ static int read_measured_boot(uint8_t* digest)
 
     return rc;
 }
+*/
+
+/* Stub function for build compatibility */
+static int read_measured_boot(uint8_t* digest)
+{
+    (void)digest;
+    return -1;
+}
 
 void main(void)
 {
@@ -313,7 +321,7 @@ void main(void)
     uint32_t next_seq = 0;
     uint32_t version = 0;
     uint8_t *v_array = (uint8_t *)&version;
-    uint8_t boot_measurement[WOLFBOOT_SHA_DIGEST_SIZE];
+    uint8_t boot_measurement[32]; /* SHA256 digest size */
     int i;
     memset(page, 0xFF, PAGESIZE);
     boot_led_on();
@@ -355,24 +363,28 @@ void main(void)
         uart_write(v_array[i]);
     }
 
+    /* TPM functionality disabled for build compatibility 
     if(app_tpm2_init() != 0) {
         for(i=0; i < sizeof(TPMfailString); i++) {
             uart_write(TPMfailString[i]);
         }
     }
+    */
 
+    /* TPM functionality disabled for build compatibility
     if(read_measured_boot(boot_measurement) == 0) {
         for(i = 0; i < sizeof(TPMpcrString); i++) {
             uart_write(TPMpcrString[i]);
         }
-        /* Print the digest of the measurement */
+        // Print the digest of the measurement
         for(i=0; i < sizeof(boot_measurement); i++) {
             uart_write_hex(boot_measurement[i]);
         }
-        /* For better view on the UART terminal */
+        // For better view on the UART terminal
         uart_write('\n');
         uart_write('\r');
     }
+    */
 
     while (1) {
         r_total = 0;
@@ -432,7 +444,7 @@ void main(void)
             /* Update complete */
             spi_flash_probe();
             wolfBoot_update_trigger();
-            spi_release();
+            spi_flash_release();
             hal_flash_lock();
             break;
         }

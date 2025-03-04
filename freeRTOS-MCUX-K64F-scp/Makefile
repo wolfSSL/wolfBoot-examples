@@ -4,10 +4,12 @@ LD:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)gcc
 OBJCOPY:=$(CROSS_COMPILE)objcopy
 SIZE:=$(CROSS_COMPILE)size
-MCUXPRESSO?=$(HOME)/src/FRDM-K64F
-MCUXPRESSO_DRIVERS?=$(MCUXPRESSO)/devices/MK64F12
-MCUXPRESSO_CMSIS?=$(MCUXPRESSO)/CMSIS
-PHY=$(MCUXPRESSO)/components/phyksz8081
+# Use mcuxsdk for drivers and wolfBoot for HAL
+WOLFBOOT_ROOT?=../wolfBoot
+MCUXSDK_ROOT?=../../mcuxsdk/mcuxsdk
+MCUXPRESSO_DRIVERS?=$(WOLFBOOT_ROOT)/hal
+MCUXPRESSO_CMSIS?=$(WOLFBOOT_ROOT)/lib/cmsis
+PHY=$(WOLFBOOT_ROOT)/hal
 FREERTOS_PORT:=freeRTOS/portable/GCC/ARM_CM4F
 WOLFBOOT:=../wolfBoot
 WOLFSSL_ROOT:=../wolfBoot/lib/wolfssl
@@ -34,19 +36,14 @@ else
 endif
 
 
-CFLAGS+=-I$(MCUXPRESSO_DRIVERS)/drivers -I$(MCUXPRESSO_DRIVERS) -DCPU_MK64FN1M0VLL12 -I$(MCUXPRESSO_CMSIS)/Include -I$(PHY) -DDEBUG_CONSOLE_ASSERT_DISABLE=1
+CFLAGS+=-I$(MCUXPRESSO_DRIVERS) -I$(MCUXPRESSO_DRIVERS)/include -DCPU_MK64FN1M0VLL12 -DDEBUG_CONSOLE_ASSERT_DISABLE=1
 LDFLAGS=$(CFLAGS) -Wl,-gc-sections -ffreestanding -nostartfiles -lc -lnosys -Wl,-Map=image.map -specs=nano.specs
 
 
 
 
 OBJS:= \
-  $(MCUXPRESSO_DRIVERS)/drivers/fsl_clock.o \
-  $(MCUXPRESSO_DRIVERS)/drivers/fsl_ftfx_flash.o \
-  $(MCUXPRESSO_DRIVERS)/drivers/fsl_ftfx_cache.o \
-  $(MCUXPRESSO_DRIVERS)/drivers/fsl_ftfx_controller.o \
-  $(MCUXPRESSO_DRIVERS)/drivers/fsl_enet.o \
-  $(MCUXPRESSO_DRIVERS)/drivers/fsl_sysmpu.o \
+  $(MCUXPRESSO_DRIVERS)/kinetis.o \
   $(WOLFBOOT)/src/libwolfboot.o \
   $(WOLFBOOT)/hal/kinetis.o \
   $(WOLFSSH_ROOT)/src/internal.o \
@@ -122,13 +119,15 @@ LIBS+=build/lib/libpicotcp.a
 vpath %.c $(dir $(WOLFSSL_ROOT)/src)
 vpath %.c $(dir $(WOLFSSL_ROOT)/wolfcrypt/src)
 
+SIGN_TOOL:=../wolfBoot/tools/keytools/sign
+
 wolfboot:LSCRIPT:=k64f_wolfboot.ld
 wolfboot: image.bin wolfboot-align.bin
-	python3 ../wolfBoot/tools/keytools/sign.py --ecc256 image.bin ../wolfBoot/ecc256.der 1
+	$(SIGN_TOOL) --ecc256 image.bin ../wolfBoot/ecc256.der 1
 	cat wolfboot-align.bin image_v1_signed.bin >factory.bin
 	sleep 1
 	touch image.bin
-	python3 ../wolfBoot/tools/keytools/sign.py --ecc256 image.bin ../wolfBoot/ecc256.der 2
+	$(SIGN_TOOL) --ecc256 image.bin ../wolfBoot/ecc256.der 2
 
 wolfboot-align.bin:CFLAGS=-mthumb -Wall -Wextra -Wno-main -Wstack-usage=1024 -ffreestanding -Wno-unused \
 		-Isrc \
@@ -136,7 +135,7 @@ wolfboot-align.bin:CFLAGS=-mthumb -Wall -Wextra -Wno-main -Wstack-usage=1024 -ff
 	-IfreeRTOS -IfreeRTOS/include -I build/include -I$(WOLFBOOT)/include -I$(WOLFBOOT) \
 	-DWOLFSSL_USER_SETTINGS -I$(WOLFSSL_ROOT)  -DPICO_PORT_CUSTOM \
 	-mthumb -mlittle-endian -mthumb-interwork -ffreestanding -fno-exceptions
-wolfboot-align.bin:CFLAGS+=-I$(MCUXPRESSO_DRIVERS)/drivers -I$(MCUXPRESSO_DRIVERS) -DCPU_MK64FN1M0VLL12 -I$(MCUXPRESSO_CMSIS)/Include -I$(PHY) -DDEBUG_CONSOLE_ASSERT_DISABLE=1 -mcpu=cortex-m3 -DNVM_FLASH_WRITEONCE=1
+wolfboot-align.bin:CFLAGS+=-I$(MCUXPRESSO_DRIVERS) -I$(MCUXPRESSO_DRIVERS)/include -DCPU_MK64FN1M0VLL12 -DDEBUG_CONSOLE_ASSERT_DISABLE=1 -mcpu=cortex-m3 -DNVM_FLASH_WRITEONCE=1
 wolfboot-align.bin:LDFLAGS=$(CFLAGS) -Wl,-gc-sections -ffreestanding -nostartfiles -lc -lnosys -Wl,-Map=image.map -specs=nano.specs
 wolfboot-align.bin: wolfboot_target
 	rm -f ../wolfBoot/hal/kinetis.o
