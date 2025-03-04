@@ -41,7 +41,7 @@ clean:
 	rm -f tags
 	
 $(BOOT_IMG)_v1_signed.bin: $(BOOT_ELF)
-	python3 $(WOLFBOOT)/tools/keytools/sign.py $(BOOT_IMG).bin $(WOLFBOOT)/ed25519.der 1
+	$(WOLFBOOT)/tools/keytools/sign --ed25519 $(BOOT_IMG).bin $(WOLFBOOT)/ed25519.der 1
 
 $(DTLS_OTA)/dtls-ota-signed.bin: $(BOOT_IMG)_v1_signed.bin
 	mv $^ $@

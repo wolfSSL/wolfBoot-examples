@@ -112,11 +112,11 @@ vpath %.c $(dir $(WOLFSSL_ROOT)/wolfcrypt/src)
 
 wolfboot:LSCRIPT:=k64f_wolfboot.ld
 wolfboot: image.bin wolfboot-align.bin
-	python3 ../wolfBoot/tools/keytools/sign.py --ecc256 image.bin ../wolfBoot/ecc256.der 1
+	../wolfBoot/tools/keytools/sign --ecc256 image.bin ../wolfBoot/ecc256.der 1
 	cat wolfboot-align.bin image_v1_signed.bin >factory.bin
 	sleep 1
 	touch image.bin
-	python3 ../wolfBoot/tools/keytools/sign.py --ecc256 image.bin ../wolfBoot/ecc256.der 2
+	../wolfBoot/tools/keytools/sign --ecc256 image.bin ../wolfBoot/ecc256.der 2
 
 wolfboot-align.bin:CFLAGS=-mthumb -Wall -Wextra -Wno-main -Wstack-usage=1024 -ffreestanding -Wno-unused \
 		-Isrc \

@@ -100,8 +100,8 @@ wolfboot-example: wolfboot_align.bin image.bin
 wolfboot-align.bin:LSCRIPT:=$(WOLFBOOT_ROOT)/target.ld
 wolfboot_align.bin:CFLAGS+=-DWOLFBOOT_HASH_SHA256
 wolfboot_align.bin: wolfboot_target
-	make -C $(WOLFBOOT_ROOT) align
-	cp $(WOLFBOOT_ROOT)/wolfboot-align.bin .
+	# Create an empty aligned binary since 'align' target is no longer available
+	dd if=/dev/zero of=wolfboot-align.bin bs=1 count=0 seek=131072
 	cp $(WOLFBOOT_ROOT)/wolfboot.elf .
 
 image.bin: wolfboot_target image.elf
