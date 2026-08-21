@@ -1,0 +1,30 @@
+[Unit]
+# Two-pane i.MX95 post-quantum demo, started automatically at boot.
+#
+# The point of this unit is the replay beat. The Cortex-M7 can only be started
+# once per Linux boot, so re-running the demo needs a full power cycle. Without
+# autostart that also means someone logging in and typing a command afterwards,
+# over a network link that comes up unreliably. With it, cutting and restoring
+# power is the entire replay, and nothing depends on a host being connected.
+Description=wolfSSL i.MX95 post-quantum two-pane demo
+Documentation=https://github.com/wolfSSL/wolfBoot-examples/pull/13
+After=docker.service
+Requires=docker.service
+# tty1 is the HDMI console; a getty there fights the renderer for it.
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /home/torizon/demo/demo-run.sh /dev/tty1
+# A dead screen is worse than a retry on a show floor. Re-running is safe: the
+# M7 start is skipped when the core is already running, and the compose project
+# is torn down and brought back up on each pass.
+Restart=on-failure
+RestartSec=5
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

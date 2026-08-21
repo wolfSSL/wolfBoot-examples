@@ -1,0 +1,42 @@
+# Torizon OS deployment unit for the wolfCrypt PQC benchmark pane.
+#
+# Deploy with:
+#   docker compose up          (on the board, or via Torizon Cloud)
+#
+# The container writes to stdout; the demo host captures that into the left
+# tmux pane on the HDMI console. Part 2's Cortex-M7 wolfBoot output arrives
+# over RPMsg (rpmsg_tty) into the right pane of the same tmux session.
+
+services:
+  wolfcrypt-pqc:
+    image: wolfssl/wolfcrypt-pqc:latest
+    container_name: wolfcrypt-pqc
+    restart: unless-stopped
+
+    # Live console demo: keep the TTY so the ANSI banner renders and output is
+    # not block-buffered behind a pipe.
+    tty: true
+    stdin_open: true
+
+    environment:
+      # auto  -- pick sha3-crypto only if the CPU advertises FEAT_SHA3
+      # ab    -- alternate builds each cycle to show the SHA-3 lever live
+      MODE: "${MODE:-auto}"
+      LOOP: "1"
+      PAUSE: "${PAUSE:-5}"
+
+    # The entrypoint reads /proc/cpuinfo to decide which build is safe to run,
+    # so the host's real CPU feature list must be visible.
+    volumes:
+      - /proc/cpuinfo:/proc/cpuinfo:ro
+      - ./results:/results
+
+    # Benchmarks are CPU-bound and want the whole A55 cluster. Leave unset to
+    # use all cores; pin here if the M7-side demo needs headroom.
+    # cpuset: "0-5"
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

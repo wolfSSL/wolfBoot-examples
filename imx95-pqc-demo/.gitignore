@@ -1,0 +1,5 @@
+# Zephyr build output (m7/build.sh writes here)
+m7/build/
+# wolfSSL source export and cross-build trees (container/build-aarch64.sh)
+container/wolfssl-src/
+container/build/
