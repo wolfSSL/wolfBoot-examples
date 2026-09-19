@@ -174,6 +174,8 @@ ML_DSA_LEVEL=5 IMAGE_HEADER_SIZE=12288 \
 
 This writes `fitImage_v1_signed.bin`: the image with a 12288-byte wolfBoot header prepended. The `1` is the version; wolfBoot refuses to roll back to a lower one.
 
+Note that `SOURCE_DATE_EPOCH` makes the FIT reproducible but not the signed image. ML-DSA signing is randomized, so signing the same FIT twice gives two different 4627-byte signatures and two different file hashes. Comparing a rebuild against a known-good signed image means comparing the payload past the 12288-byte header; the headers legitimately differ.
+
 ## 4. Assemble the boot image
 
 The i.MX95 boot ROM reads a set of **AHAB** (Advanced High Assurance Boot) containers from the boot medium. There are two:
