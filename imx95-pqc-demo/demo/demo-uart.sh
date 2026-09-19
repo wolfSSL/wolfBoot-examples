@@ -20,6 +20,9 @@ DEMO=${DEMO:-/home/torizon/demo}
 MEMTOOL=${MEMTOOL:-/home/torizon/bin/memtool}
 CONSOLE_ADDR=${CONSOLE_ADDR:-0x80F00000}
 STATUS_ADDR=${STATUS_ADDR:-0x80F10000}
+# wolfBoot (BL33) mirrors its console into this DDR ring (IMX95_LOG_RING=1), so
+# its verified-boot lines can still be read after the handoff to Linux.
+A55_RING_ADDR=${A55_RING_ADDR:-0x80F20000}
 M7_CORE_MHZ=${M7_CORE_MHZ:-800}
 CONTAINER=${CONTAINER:-wolfcrypt-pqc}
 INTERVAL=${INTERVAL:-0.5}
@@ -31,6 +34,8 @@ SETTLE=${SETTLE:-3}
 R=$'\033[0m'
 C_M7=$'\033[1;36m'
 C_A55=$'\033[1;33m'
+C_OK=$'\033[1;32m'
+C_HDR=$'\033[1;37m'
 
 # Stop the kernel from writing to this console for the rest of the demo. Its
 # late-boot chatter (USB, Bluetooth, wlan scans) otherwise interleaves with the
@@ -45,11 +50,41 @@ sleep "$SETTLE"
 printf '%s\n' "$R"
 echo "=================================================================="
 echo " NXP i.MX95 - post-quantum verified boot on both clusters"
-echo "   Cortex-A55  wolfBoot ML-DSA-87 -> Linux   (printed above)"
+echo "   Cortex-A55  wolfBoot ML-DSA-87 -> Linux   (replayed below)"
 echo "   Cortex-M7   wolfBoot ML-DSA-87 -> Zephyr  [M7 ]"
 echo "   Cortex-A55  wolfCrypt ML-KEM / ML-DSA     [A55]"
 echo "=================================================================="
 echo
+
+# Replay the A55 verified-boot lines.
+#
+# They print live, seconds after power-on, but by the time anyone is watching
+# they have scrolled away under the kernel's own boot messages. wolfBoot mirrors
+# its console into a DDR ring precisely so this moment can be shown again, at
+# the point in the demo where someone is actually looking at the screen.
+a55_verified_boot() {
+    local ring
+    ring=$("$MEMTOOL" con "$A55_RING_ADDR" 2>/dev/null) || return 0
+    [ -n "$ring" ] || return 0
+
+    printf '%s\n' "$R"
+    echo "${C_HDR}+---------------------------------------------------------------+${R}"
+    echo "${C_HDR}| Cortex-A55: what wolfBoot did before Linux started             |${R}"
+    echo "${C_HDR}+---------------------------------------------------------------+${R}"
+    # wolfBoot's console writes CRLF; strip the CR or it prints as ^M here.
+    printf '%s' "$ring" | tr -d '\r' \
+      | grep -aE "Boot partition:|Checking image integrity|Verifying image signature|ML-DSA|MlDsaKey|Firmware Valid" \
+      | awk '!seen[$0]++' \
+      | while IFS= read -r line; do
+            case "$line" in
+                *"returned OK"|*"Firmware Valid"*) printf '%s  %s%s\n' "$C_OK" "$line" "$R" ;;
+                *) printf '%s  %s%s\n' "$C_A55" "$line" "$R" ;;
+            esac
+        done
+    echo "${C_HDR}+---------------------------------------------------------------+${R}"
+    echo
+}
+a55_verified_boot
 
 # The compose network does not survive a power cut while a container created by
 # an earlier run does, so "up -d" alone fails with "network not found" and the
