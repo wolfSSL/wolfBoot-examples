@@ -11,6 +11,9 @@
 #
 # mmc-utils numbers the boot partitions from 1, so boot0 is "1" and boot1 "2"
 # in the underlying command.
+#
+# ssh -t gives sudo a terminal so it can prompt; nothing here embeds a password.
+# It also makes the remote echo CRLF, hence the tr on captured output.
 set -euo pipefail
 
 BOARD="${BOARD:?set BOARD=user@host}"
@@ -23,9 +26,9 @@ esac
 
 echo "selecting $LABEL"
 echo "-- before --"
-ssh "$BOARD" "sudo mmc extcsd read /dev/mmcblk0 2>/dev/null | grep -iA2 'PARTITION_CONFIG'" || true
-ssh "$BOARD" "sudo mmc bootpart enable $N 1 /dev/mmcblk0"
+ssh -t "$BOARD" "sudo mmc extcsd read /dev/mmcblk0 2>/dev/null | grep -iA2 'PARTITION_CONFIG'" 2>/dev/null | tr -d '\r' || true
+ssh -t "$BOARD" "sudo mmc bootpart enable $N 1 /dev/mmcblk0" 2>/dev/null | tr -d '\r'
 echo "-- after --"
-ssh "$BOARD" "sudo mmc extcsd read /dev/mmcblk0 2>/dev/null | grep -iA2 'PARTITION_CONFIG'" || true
+ssh -t "$BOARD" "sudo mmc extcsd read /dev/mmcblk0 2>/dev/null | grep -iA2 'PARTITION_CONFIG'" 2>/dev/null | tr -d '\r' || true
 echo
 echo "Power-cycle the board to boot from $LABEL."
