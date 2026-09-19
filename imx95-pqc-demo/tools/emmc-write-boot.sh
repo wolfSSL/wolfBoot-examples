@@ -42,7 +42,12 @@ ssh -t "$BOARD" "sudo sh -c '
 '"
 
 echo "== verifying readback =="
-REMOTE_MD5=$(ssh -t "$BOARD" "sudo dd if=$DEV bs=1M count=32 2>/dev/null | md5sum | cut -d' ' -f1" 2>/dev/null | tr -d '\r\n')
+# Read back exactly as many bytes as were written. The boot partition is larger
+# than the image (31.5 MiB on this module), so hashing the whole partition
+# compares the image against the image plus whatever follows it, and reports a
+# mismatch on a write that was perfectly good.
+IMG_SZ=$(stat -c %s "$IMG")
+REMOTE_MD5=$(ssh -t "$BOARD" "sudo dd if=$DEV bs=1M iflag=count_bytes count=$IMG_SZ 2>/dev/null | md5sum | cut -d' ' -f1" 2>/dev/null | tr -d '\r\n')
 ssh "$BOARD" 'rm -f /tmp/boot-image.bin'
 if [ "$LOCAL_MD5" != "$REMOTE_MD5" ]; then
     echo "MD5 MISMATCH: local $LOCAL_MD5, board $REMOTE_MD5" >&2
