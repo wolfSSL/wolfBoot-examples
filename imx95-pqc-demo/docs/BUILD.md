@@ -216,7 +216,23 @@ scp -r ../demo <board>:~/demo
 ssh <board> "sudo bash ~/demo/install-autostart.sh"
 ```
 
-That installs two systemd units: one starts the Cortex-M7 through `remoteproc`, the other streams both cores' output to the serial console on every boot. Pass `--display` instead if you have a DisplayPort screen attached and want the two-pane renderer, or `--off` to disable the demo and get the login prompt back.
+That installs two systemd units: one starts the Cortex-M7 through `remoteproc`, the other streams both cores' output to the serial console on every boot. `--off` disables the demo and gives the login prompt back.
+
+### DisplayPort as a second view
+
+```
+ssh <board> "sudo bash ~/demo/install-autostart.sh --display"
+```
+
+`--display` adds a third unit, `wolfssl-display.service`, which renders the same two panes onto a DisplayPort panel. It is additive rather than an alternative: the renderer starts nothing, it only follows the container logs and the Cortex-M7 console ring that the serial unit brings up, so the screen and the console show the same run. It also disables the older combined `wolfssl-demo.service`, which both renders and starts the demo - running that one alongside these gives two renderers fighting for the panel.
+
+Torizon has no fbdev emulation, so the renderer owns the panel through KMS as the sole DRM master. The unit takes tty1 from the getty with `Conflicts=`, and `demo-display-fg.sh` unbinds the framebuffer console and stops Torizon's pairing overlay before it starts.
+
+No font is committed here. `drmfb.py` uses `$DRM_FONT` if set, then a `font.ttf` placed next to it, then the first monospace TrueType face it finds among the usual distribution paths (Noto Sans Mono, DejaVu Sans Mono, Liberation Mono). With none of those and no Pillow it falls back to a built-in 8x8 bitmap, which is legible but blocky. On Torizon:
+
+```
+ssh <board> "sudo apt-get install -y fonts-noto-mono python3-pil"
+```
 
 ## Recovery
 

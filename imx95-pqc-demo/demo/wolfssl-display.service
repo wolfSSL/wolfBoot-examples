@@ -1,0 +1,33 @@
+[Unit]
+# DisplayPort view of the demo, started automatically at boot.
+#
+# Enable this alongside wolfssl-demo-uart.service rather than instead of it.
+# The serial unit drives the demo (container, Cortex-M7, the stream a recording
+# captures); this one only renders what that produces onto a panel. On a show
+# floor that makes the screen a backup for the console rather than a second
+# demo competing for the same hardware.
+Description=wolfSSL i.MX95 PQC demo - DisplayPort renderer
+Documentation=https://github.com/wolfSSL/wolfBoot-examples/pull/13
+After=multi-user.target docker.service
+Wants=docker.service
+# tty1 is the DisplayPort console; a getty there fights the renderer for it.
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+ExecStart=/home/torizon/demo/demo-display-fg.sh
+# Pillow lives in the user site directory on Torizon, and this runs as root.
+Environment=PYTHONPATH=/home/torizon/.local/lib/python3.12/site-packages
+Environment=INTERVAL=0.5
+Environment=DRM_FONT_PX=20
+# A dead screen is worse than a retry on a show floor, and the renderer starts
+# nothing, so restarting it cannot disturb the demo it is displaying.
+Restart=always
+RestartSec=2
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

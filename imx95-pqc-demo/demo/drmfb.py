@@ -353,6 +353,29 @@ class DrmFramebuffer:
                        ctypes.sizeof(DrmModeModeinfo))
         fcntl.ioctl(self.fd, SETCRTC, crtc)
 
+    # Monospace TrueType faces shipped by the distributions this has run on.
+    # No font is vendored here; DRM_FONT or a font.ttf dropped next to this
+    # file overrides the search, and the 8x8 bitmap covers a board with none.
+    FONT_SEARCH = (
+        "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf",
+        "/usr/share/fonts/noto/NotoSansMono-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSansMono.ttf",
+        "/usr/share/fonts/liberation/LiberationMono-Regular.ttf",
+    )
+
+    def _find_font(self):
+        env = os.environ.get("DRM_FONT")
+        if env:
+            return env
+        local = os.path.join(os.path.dirname(__file__), "font.ttf")
+        if os.path.exists(local):
+            return local
+        for path in self.FONT_SEARCH:
+            if os.path.exists(path):
+                return path
+        return local
+
     def _setup(self, mode):
         self.mode = mode
         self.width = self.mode.hdisplay
@@ -382,9 +405,7 @@ class DrmFramebuffer:
         # blits the whole frame in one memcpy.
         self.pil = None
         font_px = int(os.environ.get("DRM_FONT_PX", "18"))
-        font_path = os.environ.get("DRM_FONT",
-                                   os.path.join(os.path.dirname(__file__),
-                                                "font.ttf"))
+        font_path = self._find_font()
         try:
             from PIL import Image, ImageDraw, ImageFont
             if os.path.exists(font_path):

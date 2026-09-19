@@ -21,6 +21,7 @@ scp -q "$DEMO/demo/twopane.py" "$DEMO/demo/drmfb.py" "$DEMO/demo/font8x8.py" \
        "$DEMO/demo/m7-rpmsg-log.sh" "$DEMO/demo/install-autostart.sh" \
        "$DEMO/demo/wolfssl-demo.service" "$DEMO/demo/wolfssl-m7.service" \
        "$DEMO/demo/demo-uart.sh" "$DEMO/demo/wolfssl-demo-uart.service" \
+       "$DEMO/demo/demo-display-fg.sh" "$DEMO/demo/wolfssl-display.service" \
        "$BOARD:~/demo/"
 scp -q "$DEMO/container/docker-compose.yml" "$BOARD:~/demo/"
 scp -q "$WOLFBOOT/wolfboot.elf" "$BOARD:~/demo/fw/rproc-imx-rproc-fw"
