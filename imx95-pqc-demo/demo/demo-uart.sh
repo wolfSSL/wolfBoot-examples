@@ -98,10 +98,17 @@ a55_verified_boot
 ( cd "$DEMO" && LOOP=0 RESTART_POLICY=no docker compose up -d >/dev/null 2>&1 ) \
     || echo "[A55] container failed to start"
 
-# The M7 is started by wolfssl-m7.service; only release it here if that unit is
-# not in use. It can only be started once per Linux boot either way.
+# The M7 is normally released by wolfssl-m7.service, which systemd starts in
+# parallel with this unit. Go through systemd where that unit exists, so the two
+# cannot both load the payload: the second load lands in DDR under a core that
+# is already executing it, and the app faults on a corrupted heap seconds later.
+# m7-start.sh takes a lock as well, for a board without the unit.
 if [ "$(cat /sys/class/remoteproc/remoteproc1/state 2>/dev/null)" != "running" ]; then
-    bash "$DEMO/m7-start.sh" >/dev/null 2>&1 || true
+    if systemctl cat wolfssl-m7.service >/dev/null 2>&1; then
+        systemctl start wolfssl-m7.service >/dev/null 2>&1 || true
+    else
+        bash "$DEMO/m7-start.sh" >/dev/null 2>&1 || true
+    fi
 fi
 
 # memtool dumps the whole ring each call, so track what has already been shown

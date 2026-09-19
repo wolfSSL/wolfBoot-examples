@@ -14,6 +14,14 @@ RP=/sys/class/remoteproc/remoteproc1
 BOOT_ADDR=0x80100000
 STATUS=0x80F10000
 
+# wolfssl-m7.service and demo-uart.sh's fallback both release the core, and
+# systemd starts them in parallel. Both read the remoteproc state before
+# loading, so without a lock the loser rewrites the payload in DDR under a core
+# that is already executing it; the app then faults on a corrupted heap a second
+# or two later. Serialize check, load and start.
+exec 9>/run/wolfssl-m7-start.lock
+flock 9
+
 if [ "$(cat $RP/state)" = "running" ]; then
     echo "M7 is already running - power cycle the board to run the demo again" >&2
     exit 1
