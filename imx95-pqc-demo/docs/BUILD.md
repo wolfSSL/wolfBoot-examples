@@ -207,6 +207,8 @@ make
 
 The M7 image is loaded by Linux `remoteproc` rather than by the ROM, so it is not part of the AHAB container set. Staging and start-up are covered by `../demo/m7-start.sh`, and the Zephyr application it verifies is built from `../m7/zephyr-app/`.
 
+The Zephyr application links wolfCrypt's own benchmark, which needs a wolfSSL new enough to zero the ML-KEM key objects in `bench_mlkem()`. Without that, `bench_mlkem_keygen()` calls `wc_MlKemKey_Free()` on memory that was only allocated, frees whatever pointers it happened to contain, and the core takes a bus fault a moment after the benchmark header prints.
+
 Two things bite when reloading M7 firmware. The core cannot be stopped once wolfBoot's `main()` is spinning - the kernel logs `Not in wfi` and `can't stop rproc: -4` - so a reload silently leaves the previous firmware running; power-cycle instead. And after copying firmware to the board, run `sync` before cutting power, or the write sits in page cache and the board comes up on the old image with a filename and size that look right.
 
 ## 8. Install the demo
