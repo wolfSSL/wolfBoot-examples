@@ -228,10 +228,12 @@ ssh <board> "sudo bash ~/demo/install-autostart.sh --display"
 
 Torizon has no fbdev emulation, so the renderer owns the panel through KMS as the sole DRM master. The unit takes tty1 from the getty with `Conflicts=`, and `demo-display-fg.sh` unbinds the framebuffer console and stops Torizon's pairing overlay before it starts.
 
-No font is committed here. `drmfb.py` uses `$DRM_FONT` if set, then a `font.ttf` placed next to it, then the first monospace TrueType face it finds among the usual distribution paths (Noto Sans Mono, DejaVu Sans Mono, Liberation Mono). With none of those and no Pillow it falls back to a built-in 8x8 bitmap, which is legible but blocky. On Torizon:
+No font is committed here. `drmfb.py` uses `$DRM_FONT` if set, then a `font.ttf` placed next to it, then the first monospace TrueType face it finds among the usual distribution paths (Noto Sans Mono, DejaVu Sans Mono, Liberation Mono). With none of those it falls back to a built-in 8x8 bitmap, which is legible but blocky.
+
+Torizon OS ships no fonts and has no package manager - the filesystem is an OSTree deployment - so on this board the search finds nothing and a font has to be staged by hand. Pillow is already installed. Any monospace TrueType face works; the demo was shown with Noto Sans Mono, which is under the SIL Open Font License 1.1 and available from <https://fonts.google.com/noto/specimen/Noto+Sans+Mono>:
 
 ```
-ssh <board> "sudo apt-get install -y fonts-noto-mono python3-pil"
+scp NotoSansMono-Regular.ttf <board>:~/demo/font.ttf
 ```
 
 ## Recovery
