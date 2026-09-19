@@ -14,6 +14,24 @@ Everything here is a direct command. Where a script is used it lives in a public
 git clone https://github.com/wolfSSL/wolfBoot
 git clone https://github.com/wolfSSL/wolfBoot-examples
 git clone https://github.com/nxp-imx/imx-mkimage
+export TOOLS=$PWD/wolfBoot-examples/imx95-pqc-demo/tools
+```
+
+Every command below runs from that directory - the one holding the three clones - and `$TOOLS` is where this demo's scripts live.
+
+wolfBoot keeps wolfCrypt in a submodule, and nothing builds without it:
+
+```
+cd wolfBoot
+git submodule update --init lib/wolfssl
+```
+
+The Cortex-A55 target is not on `master` yet - it is [PR #888](https://github.com/wolfSSL/wolfBoot/pull/888). Until that merges, `config/examples/imx95-a55.config`, `hal/imx95_a55.c` and the stage 1 come from its branch. The Cortex-M7 target in step 7 is already on `master`.
+
+```
+git fetch origin pull/888/head:imx95_a55_pr
+git checkout imx95_a55_pr
+git submodule update --init lib/wolfssl
 ```
 
 **Toolchains.** `aarch64-none-elf-` (or `aarch64-linux-gnu-`) for the A55, `arm-none-eabi-` for the M7. On Debian or Ubuntu: `apt install gcc-aarch64-linux-gnu gcc-arm-none-eabi`.
@@ -29,21 +47,29 @@ ssh <board> "sudo dd if=/dev/mmcblk0boot0 bs=1M count=32" > boot0.bin
 ARM Trusted Firmware (BL31) and OP-TEE are in there too, so you do not need to build or source them separately. Pull everything out of that one file:
 
 ```
-python3 ../tools/ahab-extract.py boot0.bin -o vendor/
+python3 $TOOLS/ahab-extract.py boot0.bin -o vendor/
 ```
 
 ```
-container 0 at 0x8000, 5 image(s)
+container 0 at 0x8000, 5 image(s), 817152 bytes
+  [0] empty marker at +0x75800
   [1] 0x1FFC0000    321536 bytes  Cortex-M33 image (System Manager or OEI)
+       -> vendor/m33.bin
   [2] 0x1FFC0000    129024 bytes  Cortex-M33 image (System Manager or OEI)
+       -> vendor/m33_c0i2.bin
   [3] 0x20480000    141312 bytes  A55 image in OCRAM (U-Boot SPL, or wolfBoot stage 1)
-container 1 at 0xcf800, 3 image(s)
+       -> vendor/spl.bin
+  [4] empty marker at +0xc7800
+container 1 at 0xcf800, 3 image(s), 1650688 bytes
   [0] 0x8A200000     38912 bytes  ARM Trusted Firmware BL31 (secure monitor, EL3)
+       -> vendor/bl31.bin
   [1] 0x90200000    968704 bytes  BL33 (U-Boot proper, or wolfBoot)
+       -> vendor/bl33.bin
   [2] 0x8C000000    593920 bytes  OP-TEE (trusted OS, secure EL1)
+       -> vendor/tee.bin
 ```
 
-That gives you `vendor/bl31.bin` and `vendor/tee.bin`, which is all you need from the vendor side. Images are named by load address, because those are fixed on this SoC. The two M33 images share a load address - the OEI runs and returns before the System Manager is loaded over it - so the second is written with an index suffix.
+Of those, `vendor/bl31.bin` and `vendor/tee.bin` are what the rest of this guide consumes; the others are kept because they document what the container holds. Images are named by load address, because those are fixed on this SoC. The two M33 images share a load address - the OEI runs and returns before the System Manager is loaded over it - so the second is written with an index suffix. The empty markers are zero-length end-of-list entries the ROM expects, and are why replacing the SPL slot does not move container 1.
 
 ## 1. Build mkimage
 
@@ -70,12 +96,18 @@ The first build also generates a signing key (`wolfboot_signing_private_key.der`
 cp wolfboot_signing_private_key.der ~/keys/imx95-demo-signing-key.der
 ```
 
-To reuse an existing key instead of generating one, import its public half before building. Note the level must be given in the environment - both key tools default to ML-DSA level 2 and will silently truncate a level 5 key:
+To reuse an existing key instead of generating one, point the build at it. `USER_PRIVATE_KEY` and `USER_PUBLIC_KEY` take precedence over the generated key, and the build then never runs the key generator at all:
 
 ```
-python3 -c "d=open('/path/to/key.der','rb').read(); open('pub.der','wb').write(d[-2592:])"
-ML_DSA_LEVEL=5 ./tools/keytools/keygen --ml_dsa -i pub.der --der
+python3 -c "d=open('/path/to/key.der','rb').read(); open('/tmp/pub.der','wb').write(d[-2592:])"
+make USER_PRIVATE_KEY=/path/to/key.der USER_PUBLIC_KEY=/tmp/pub.der
+make -C stage1 DISK_EMMC=1 DISK_SDCARD=0 loader_stage1.bin \
+    USER_PRIVATE_KEY=/path/to/key.der USER_PUBLIC_KEY=/tmp/pub.der
 ```
+
+Both must be given together; the build errors out if only one is set, or if either file is missing. The private key is the 7488-byte DER as `keygen` writes it - 4896 bytes of private key followed by the 2592-byte public key, which is where the one-liner above takes the public half from.
+
+Prefer this over importing with `keytools/keygen -i`. That route works, but it leaves the tree with a keystore and no matching private key, so the next plain `make` tries to generate a fresh key and stops on `Are you sure you want to generate a new key and overwrite the existing key ?`. Answering yes there replaces the keystore your signed images were built against, and the board stops booting with an authenticity error. For the same reason, do not reach for `make keysclean` to get out of that state: it deletes every `*.der` in the tree root, the extracted public key included.
 
 ## 3. Build and sign the Linux FIT
 
@@ -154,20 +186,22 @@ Nothing records where container 1 starts. It is the end of container 0 - the fur
 Build container 1 with wolfBoot as BL33, splicing it into a copy of `boot0.bin`:
 
 ```
-MKIMAGE=$MKIMAGE ../tools/ahab-pack-container2.sh \
+MKIMAGE=$MKIMAGE $TOOLS/ahab-pack-container2.sh \
     boot0.bin vendor/bl31.bin wolfBoot/wolfboot.bin vendor/tee.bin boot-wolfboot.bin
 ```
 
 Then replace the SPL slot in container 0 with the stage 1:
 
 ```
-python3 ../tools/ahab-replace-spl.py \
+python3 $TOOLS/ahab-replace-spl.py \
     boot-wolfboot.bin wolfBoot/stage1/loader_stage1.bin boot-final.bin
 ```
 
 Each image entry carries a **SHA-384** over its payload, so that script recomputes the hash for the slot it replaces; the ROM rejects the container otherwise. It leaves container 0's other images and all of container 1 untouched, and because the SPL slot is followed by a zero-length end marker at a fixed offset, the container's size does not change and container 1 does not move.
 
-Both containers this produces are byte-identical to the ones running on our demo board, which is the check that the path above is complete: everything came from that single `dd`, plus wolfBoot.
+Every image in both containers comes out byte-identical to the ones running on our demo board - the two M33 images, the stage 1, BL31, BL33 and OP-TEE - which is the check that the path above is complete: everything came from that single `dd`, plus wolfBoot. Extract your result with `ahab-extract.py` and compare the files it writes.
+
+Compare the extracted images, not the raw assembled file. Splicing a smaller BL33 into the slot a larger U-Boot occupied leaves the tail of that slot holding whatever the base `boot0.bin` had there. Those bytes sit past the declared image length, so the ROM never reads them, but they differ between base images and make a plain `cmp` of the whole file misleading.
 
 ## 5. Write the SD card
 
@@ -191,8 +225,8 @@ The eMMC has two boot partitions and EXT_CSD selects which one the ROM reads. Wr
 
 ```
 export BOARD=torizon@<board-ip>
-../tools/emmc-write-boot.sh boot-final.bin 1
-../tools/emmc-select-boot.sh 1
+$TOOLS/emmc-write-boot.sh boot-final.bin 1
+$TOOLS/emmc-select-boot.sh 1
 ```
 
 Power-cycle. Both scripts verify by reading back and neither embeds a password; use an ssh key and sudo on the target.
@@ -205,7 +239,7 @@ cp config/examples/imx95-m7.config .config
 make
 ```
 
-The M7 image is loaded by Linux `remoteproc` rather than by the ROM, so it is not part of the AHAB container set. Staging and start-up are covered by `../demo/m7-start.sh`, and the Zephyr application it verifies is built from `../m7/zephyr-app/`.
+The M7 image is loaded by Linux `remoteproc` rather than by the ROM, so it is not part of the AHAB container set. Staging and start-up are covered by `wolfBoot-examples/imx95-pqc-demo/demo/m7-start.sh`, and the Zephyr application it verifies is built from `wolfBoot-examples/imx95-pqc-demo/m7/zephyr-app/`.
 
 The Zephyr application links wolfCrypt's own benchmark, which needs a wolfSSL new enough to zero the ML-KEM key objects in `bench_mlkem()`. Without that, `bench_mlkem_keygen()` calls `wc_MlKemKey_Free()` on memory that was only allocated, frees whatever pointers it happened to contain, and the core takes a bus fault a moment after the benchmark header prints.
 
