@@ -167,6 +167,18 @@ A55.** They derive from the 24 MHz generic timer rather than the 1.8 GHz core
 clock and are wrong by roughly 75x. Use ops/sec and MB/s, or pass
 `-freq 1800000000`. The demo renderer strips those columns for this reason.
 
+**The AHAB containers are unsigned, and the module is an open part.** The boot
+ROM checks each image against the SHA-384 held in the container, which is an
+integrity check, not an authenticity one. The signature block is a 16-byte stub
+with its SRK-table, certificate and signature offsets all zero, and the ROM does
+not check it. What is cryptographically verified here is what **wolfBoot**
+verifies: the Linux FIT and the Cortex-M7's Zephyr payload, both with ML-DSA-87.
+Anchoring the chain below wolfBoot means signing the containers - which needs no
+fuses - and then burning the OEM SRK hash and closing the part, which does and is
+irreversible. See *Signing the containers* in [docs/BUILD.md](docs/BUILD.md) and
+*Where the root of trust sits* in
+[docs/BOOT-WALKTHROUGH.md](docs/BOOT-WALKTHROUGH.md).
+
 ## Documentation
 
 - [docs/BUILD.md](docs/BUILD.md) - building the demo from a stock module, end to end

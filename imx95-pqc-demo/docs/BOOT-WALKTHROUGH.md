@@ -30,6 +30,30 @@ The one-line summary: **wolfBoot is the first thing the boot ROM runs.** It occu
 
 The Cortex-M7 runs a second, independent wolfBoot that verifies a Zephyr image, started later by Linux.
 
+## Where the root of trust sits
+
+Worth being exact about, because the honest answer is not the same on a development module as on a production one.
+
+The boot ROM is on-die and immutable, so it is the only thing in the chain that cannot be replaced. What it *enforces* depends on the part's lifecycle:
+
+- **Open part, as modules ship.** The ROM parses the AHAB container set and checks each image against the SHA-384 stored in the container's image array. That is an integrity check, not an authenticity one: anyone who can write the boot medium can also write matching hashes. The signature block is present but empty - a 16-byte header with the SRK-table, certificate and signature offsets all zero - and the ROM does not check it.
+- **Closed part.** With the OEM SRK hash burned into fuses and the lifecycle advanced, the ROM authenticates the container against those fuses and refuses anything it cannot verify. That is the hardware anchor.
+
+The demo module is open. You can confirm it on any container:
+
+```
+container 0: tag=0x87 ver=0x02 len=672 images=5 sigblock_off=0x290
+   sigblock tag=0x90 len=16 srk_off=0x0 cert_off=0x0 sig_off=0x0
+```
+
+There is also a simpler proof in this repo's own tooling: `ahab-replace-spl.py` swaps an image and only recomputes its SHA-384, and the board boots the result. That can only work where nothing is signed over the container header.
+
+So on this board the cryptographic claim is **wolfBoot's**, not the ROM's: wolfBoot verifies the Linux FIT with ML-DSA-87, and the second wolfBoot on the Cortex-M7 verifies its Zephyr payload the same way. Both are real and both fail closed. What is missing underneath is the fused anchor.
+
+**Closing that gap.** Signing the containers needs no fuses and is worth doing on its own - see *Signing the containers* in `BUILD.md`. Having the hardware enforce the signature does need them, and both steps are one-way: a wrong SRK hash, a lost private key, or a container that was never confirmed to boot while the part was open leaves a board with no recovery path, serial downloader included. That is a deliberate decision for a product, not something to do to a demo unit.
+
+One forward-looking note: i.MX95's AHAB supports OEM hybrid ML-DSA SRKs, so the ROM-level anchor can itself be post-quantum rather than ECDSA alone. That makes a fully post-quantum chain from ROM to Linux possible on this silicon; this demo shows the wolfBoot half of it.
+
 **Acronyms.** *AHAB* - Advanced High Assurance Boot, NXP's signed-container boot format. *ELE* - EdgeLock Enclave. *OEI* - Optional Executable Image, code the ROM runs and returns from. *BL31/BL33* - ARM Trusted Firmware boot-loader stages; BL31 is the secure monitor, BL33 the non-secure payload. *OCRAM* - on-chip RAM, available before DDR is trained. *FIT* - Flattened Image Tree, the kernel/DTB/initramfs bundle. *ML-DSA* - the NIST post-quantum signature standard, FIPS 204, formerly Dilithium.
 
 ## Stage 1 - what replaces U-Boot SPL

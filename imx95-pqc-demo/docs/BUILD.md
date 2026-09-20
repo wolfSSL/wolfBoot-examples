@@ -201,6 +201,18 @@ python3 $TOOLS/ahab-replace-spl.py \
 
 Each image entry carries a **SHA-384** over its payload, so that script recomputes the hash for the slot it replaces; the ROM rejects the container otherwise. It leaves container 0's other images and all of container 1 untouched, and because the SPL slot is followed by a zero-length end marker at a fixed offset, the container's size does not change and container 1 does not move.
 
+### Signing the containers
+
+The containers built above are unsigned, which is how the modules ship: the signature block is a 16-byte header with its SRK-table, certificate and signature offsets all zero. On an open part the ROM checks each image against the SHA-384 in the container and nothing more, so the boot is integrity-checked but not authenticated. `BOOT-WALKTHROUGH.md` covers what that does and does not give you.
+
+Signing needs no fuses. NXP's Code Signing Tool builds an AHAB PKI tree with `ahab_pki_tree.sh`, and `srktool --ahab_ver` emits both the SRK table that goes in the container and `SRK_1_2_3_4_fuse.bin`, the hash that *would* be burned. Nothing in that flow burns anything. Sign with a CSF whose `Offsets` are the container offset and its signature-block offset, both of which `imx-mkimage` prints while building.
+
+Two things to know before trying it here. The signature block has to be big enough to hold the SRK table, the certificate and the signature, so a container has to be *built* for signing rather than patched afterwards - the 16-byte stub in a stock image leaves no room, and `ahab-replace-spl.py` deliberately preserves the existing layout. And a signed container proves nothing on an open part: the ROM will boot it either way, so the only checks available are structural - diff signed against unsigned, and confirm the signature block still ends before the first payload offset.
+
+Burning the SRK hash and closing the part are irreversible, and a part closed against a container that was never confirmed to boot is unrecoverable, serial downloader included.
+
+### Reproducibility
+
 Every image in both containers comes out byte-identical to the ones running on our demo board - the two M33 images, the stage 1, BL31, BL33 and OP-TEE - which is the check that the path above is complete: everything came from that single `dd`, plus wolfBoot. Extract your result with `ahab-extract.py` and compare the files it writes.
 
 Compare the extracted images, not the raw assembled file. Splicing a smaller BL33 into the slot a larger U-Boot occupied leaves the tail of that slot holding whatever the base `boot0.bin` had there. Those bytes sit past the declared image length, so the ROM never reads them, but they differ between base images and make a plain `cmp` of the whole file misleading.
