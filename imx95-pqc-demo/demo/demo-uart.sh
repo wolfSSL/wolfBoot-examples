@@ -252,4 +252,11 @@ echo " Demo complete. Both cores booted firmware verified with ML-DSA-87:"
 echo "   Cortex-A55  wolfBoot -> Linux    (above, before this stream)"
 echo "   Cortex-M7   wolfBoot -> Zephyr   [M7 ]"
 echo " Power-cycle the board to run it again."
+echo
+# Printed here because the serial console is the only input at a show, and
+# this is the last thing on it.
+echo " Switch the boot chain, then power-cycle:"
+echo "   sudo ~/switch-boot.sh 0      # stock U-Boot chain"
+echo "   sudo ~/switch-boot.sh 1      # wolfBoot chain"
+echo "   sudo ~/switch-boot.sh --show # which one is selected now"
 echo "=================================================================="
