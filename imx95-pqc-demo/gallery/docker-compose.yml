@@ -1,0 +1,48 @@
+# wolfCrypt post-quantum benchmarks - Torizon Demo Gallery deployment.
+#
+# Self-contained: pulls one public image and starts on its own after
+# provisioning. No host packages, no build step, no configuration required.
+#
+#   docker compose up -d          (on the board, or through Torizon Cloud)
+#
+# This is the Linux half of a larger demo. The Cortex-M7 half needs wolfBoot
+# flashed to the module and privileged access to /dev/mem, so it is deliberately
+# not part of the Gallery entry - see ../README.md for that.
+
+services:
+  wolfcrypt-pqc:
+    image: wolfssl/wolfcrypt-pqc:latest
+    container_name: wolfcrypt-pqc
+    # "always" rather than "unless-stopped": the demo has to come back on its
+    # own after provisioning and after every reboot.
+    restart: always
+
+    # Keep a TTY so the banner renders in colour and output is line-buffered
+    # rather than held in a pipe's block buffer.
+    tty: true
+
+    environment:
+      # auto        pick the SHA-3 build only if the CPU advertises FEAT_SHA3
+      # baseline    force the NEON build
+      # sha3-crypto force the FEAT_SHA3 build (faults on parts without it)
+      # ab          alternate each cycle to show the SHA-3 lever live
+      # Optional: name the board in the banner. A container cannot normally
+      # read /proc/device-tree, so without this it reads "Arm64 module".
+      SOC_LABEL: "${SOC_LABEL:-Toradex SMARC iMX95}"
+      MODE: "${MODE:-auto}"
+      LOOP: "1"
+      PAUSE: "${PAUSE:-5}"
+
+    # Results are kept in a named volume so the demo needs no pre-created host
+    # directory and survives a container replacement.
+    volumes:
+      - wolfcrypt-results:/results
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  wolfcrypt-results:

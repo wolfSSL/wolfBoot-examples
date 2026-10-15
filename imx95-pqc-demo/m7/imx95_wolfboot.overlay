@@ -1,0 +1,67 @@
+#include <zephyr/dt-bindings/memory-attr/memory-attr-arm.h>
+
+/*
+ * i.MX95 Cortex-M7: place a Zephyr image where wolfBoot boots it, and expose
+ * the Message Unit that Linux uses to kick RPMsg.
+ *
+ * 1. Relocation
+ * -------------
+ * The stock imx95_evk/mimx9596/m7/ddr target links at 0x80000000, which
+ * collides with wolfBoot's partition map. wolfBoot boots the payload in place
+ * at BOOT + IMAGE_HEADER_SIZE:
+ *
+ *   BOOT partition        0x80100000  (4 MiB)
+ *   IMAGE_HEADER_SIZE     0x3000      (12288, sized for ML-DSA-87)
+ *   payload entry         0x80103000  <- must match test-app/ARM-imx95_m7.ld
+ *
+ * 2 MiB is carved here, well inside the 4 MiB partition and clear of the
+ * wolfBoot console ring at 0x80F00000 and the status block at 0x80F10000.
+ *
+ * 2. Message Unit
+ * ---------------
+ * The board's device tree points remoteproc-cm7 at mailbox@42430000, which the
+ * MIMX9596 CM7 header names MU7_MUA - the *A55* side of the pair. The M7 owns
+ * the B side: MU7_MUB at 0x42440000, NVIC vector MU7_B_IRQn = 207.
+ *
+ * Zephyr already describes that node upstream as &mu7, disabled by default, so
+ * all that is needed here is to enable it. Without it Linux's kick has nothing
+ * to talk to and the kernel logs "imx_rproc_kick: failed (0, err:-62)".
+ */
+
+&ddr {
+	reg = <0x80103000 0x00200000>;
+};
+
+/*
+ * 3. wolfBoot's console ring and status block
+ * -------------------------------------------
+ * The payload reads wolfBoot's shared-memory console at 0x80F00000 to relay it
+ * over RPMsg. That address is outside this image's linked SRAM, and Zephyr
+ * enables the ARM MPU on this SoC (CONFIG_ARM_MPU is select'ed, so prj.conf
+ * cannot turn it off), so the access faults.
+ *
+ * The failure is quiet and easy to misread: the payload boots, announces its
+ * RPMsg channel, faults on the first read of the console header, resets, and
+ * announces again - roughly every 15 ms. On the Linux side that looks like
+ * "creating channel ... already exist" repeating forever, and the RAM console
+ * reads back all zeros because .bss is wiped on every reset. Nothing says
+ * "fault".
+ *
+ * Declaring the region with an MPU attribute gives it a proper entry. 128 KiB
+ * covers the 64 KiB console page at 0x80F00000 and the status block at
+ * 0x80F10000.
+ */
+
+&mu7 {
+	rx-channels = <4>;
+	status = "okay";
+};
+
+/ {
+	wbconsole: memory@80f00000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		reg = <0x80F00000 DT_SIZE_K(128)>;
+		zephyr,memory-region = "WBCONSOLE";
+		zephyr,memory-attr = <DT_MEM_ARM(ATTR_MPU_RAM)>;
+	};
+};

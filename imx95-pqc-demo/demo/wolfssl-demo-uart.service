@@ -1,0 +1,29 @@
+[Unit]
+# Single-stream demo on the serial console, started automatically at boot.
+#
+# Preferred over the DisplayPort renderer when the demo is being recorded or
+# watched over serial: wolfBoot's own verified-boot output is already on this
+# console seconds after power-on, and this unit simply continues that stream
+# with the Cortex-M7's log and the benchmark results.
+Description=wolfSSL i.MX95 post-quantum demo on the serial console
+Documentation=https://github.com/wolfSSL/wolfBoot-examples/pull/13
+After=multi-user.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /home/torizon/demo/demo-uart.sh
+# The kernel console is this port, so writing here puts the demo in the same
+# stream the boot messages arrived on.
+StandardOutput=tty
+StandardError=journal
+TTYPath=/dev/console
+# A dead stream is worse than a retry on a show floor, and re-running is safe:
+# the M7 start is skipped when the core is already running.
+Restart=on-failure
+RestartSec=5
+StandardInput=null
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

@@ -12,6 +12,7 @@ This repository contains example applications using [wolfBoot](https://github.co
    * wolfSSH SCP transfer firmware update mechanism, with [freeRTOS on Freescale K64F](freeRTOS-Freescale-K64F-scp)
    * BLE-GATT FOTA service using [RIOT-OS and Nimble on Nordic nRF52](riotOS-nrf52840dk-ble)
    * Measured boot demo using [wolfTPM on STM32F4](test-app-STM32F4-measured-boot)
+   * Post-quantum demo on both clusters of the [NXP i.MX95](imx95-pqc-demo): ML-DSA-87 verified boot of the Cortex-M7 alongside wolfCrypt ML-KEM/ML-DSA benchmarks on the Cortex-A55 cluster
 
 ## License
 

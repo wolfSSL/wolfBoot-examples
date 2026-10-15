@@ -1,0 +1,18 @@
+[Unit]
+# Release the Cortex-M7 once Linux is up. Separate from the renderer unit so
+# the core still boots (and its log still lands in the shared ring) when the
+# display is absent or the renderer is being restarted.
+Description=wolfSSL i.MX95 demo - start the Cortex-M7 (wolfBoot -> Zephyr)
+Documentation=https://github.com/wolfSSL/wolfBoot-examples/pull/13
+After=multi-user.target
+
+[Service]
+# One shot per Linux boot, because that is the hardware's limit: "echo stop"
+# fails on this BSP and the core stays running, so replaying the M7 boot is a
+# board power cycle. RemainAfterExit keeps the unit from being re-run.
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/torizon/demo/m7-start.sh
+
+[Install]
+WantedBy=multi-user.target
